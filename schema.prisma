@@ -1,0 +1,27 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Movie {
+  id       String   @id @default(cuid())
+  title    String
+  genre    String
+  ratings  Rating[]
+}
+
+model Rating {
+  id       String   @id @default(cuid())
+  userId   String
+  movieId  String
+  rating   Int
+  user     User     @relation(fields: [userId], references: [id])
+  movie    Movie    @relation(fields: [movieId], references: [id])
+}
+
+model User {
+  id       String   @id @default(cuid())
+  name     String
+  email    String   @unique
+  ratings  Rating[]
+}
