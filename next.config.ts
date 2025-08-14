@@ -1,14 +1,32 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // ... other configurations ...
-  auth: {
-    secret: process.env.SECRET,
-    pages: {
-      signIn: '/api/auth/signin',
-      signOut: '/api/auth/signout',
-      error: '/api/auth/error',
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'image.tmdb.org',
+        port: '',
+        pathname: '/t/p/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.themoviedb.org',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['localhost:3000'],
     },
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
   },
 };
 
