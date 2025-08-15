@@ -63,7 +63,6 @@ export default function SignUpPage() {
 
       if (response.ok) {
         setSuccess(true)
-        setTimeout(() => router.push('/auth/signin'), 2000)
       } else {
         setErrors({ general: data.error || 'Registration failed' })
       }
@@ -74,6 +73,7 @@ export default function SignUpPage() {
     }
   }
 
+  // Success page
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -87,16 +87,22 @@ export default function SignUpPage() {
           </div>
           <h2 className="text-2xl font-bold text-white mb-4">Welcome to CineScope! 🎉</h2>
           <p className="text-white/80 mb-4">
-            Your account has been created successfully. You'll be redirected to sign in shortly.
+            Your account has been created successfully. You can now sign in with your credentials.
           </p>
-          <div className="w-8 h-8 border-4 border-purple-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <Link 
+            href="/auth/signin"
+            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+          >
+            Go to Sign In
+          </Link>
         </motion.div>
       </div>
     )
   }
 
+  // Main signup form
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 flex items-center justify-center relative overflow-hidden">
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <motion.div
@@ -118,7 +124,7 @@ export default function SignUpPage() {
           transition={{ delay: 0.1 }}
           className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20"
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-purple-200 text-sm font-medium mb-2">
                 Full Name
@@ -228,6 +234,7 @@ export default function SignUpPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
+              onClick={handleSubmit}
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 px-4 rounded-lg hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2"
             >
@@ -247,7 +254,7 @@ export default function SignUpPage() {
                 </>
               )}
             </motion.button>
-          </form>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-white/60 text-sm">

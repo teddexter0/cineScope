@@ -1,66 +1,87 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Add this to your app/globals.css for the new Superman-inspired color scheme */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Superman Color Palette */
+  --primary-blue: #1e3a8a;      /* Deep Superman blue */
+  --bright-blue: #3b82f6;       /* Bright blue */
+  --light-blue: #60a5fa;        /* Light blue */
+  
+  --primary-red: #dc2626;        /* Superman red */
+  --bright-red: #ef4444;         /* Bright red */
+  
+  --golden-yellow: #fbbf24;      /* Golden yellow */
+  --bright-yellow: #facc15;      /* Bright yellow */
+  --sunset-orange: #f97316;      /* Sunset orange */
+  --warm-orange: #fb923c;        /* Warm orange */
+  
+  /* Gradients */
+  --hero-gradient: linear-gradient(135deg, var(--primary-blue) 0%, var(--sunset-orange) 50%, var(--golden-yellow) 100%);
+  --button-gradient: linear-gradient(45deg, var(--golden-yellow) 0%, var(--sunset-orange) 100%);
+  --card-gradient: linear-gradient(135deg, var(--primary-blue)/10 0%, var(--sunset-orange)/10 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Update your background gradients */
+.hero-bg {
+  background: linear-gradient(135deg, 
+    #1e3a8a 0%,     /* Deep blue */
+    #3730a3 25%,    /* Indigo */
+    #f97316 75%,    /* Orange */
+    #fbbf24 100%    /* Yellow */
+  );
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+.card-bg {
+  background: rgba(30, 58, 138, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(251, 191, 36, 0.2);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+.button-primary {
+  background: linear-gradient(45deg, #fbbf24 0%, #f97316 100%);
+  color: #1e3a8a;
+  font-weight: bold;
 }
 
-/* Custom animations and effects */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
+.button-primary:hover {
+  background: linear-gradient(45deg, #facc15 0%, #ea580c 100%);
+  transform: translateY(-2px);
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+.text-primary {
+  color: #fbbf24;
 }
 
-/* Glassmorphism effects */
-.glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.text-secondary {
+  color: #fb923c;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
+.text-accent {
+  color: #60a5fa;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+/* Custom utility classes for the new color scheme */
+.bg-hero {
+  background: var(--hero-gradient);
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.5);
-  border-radius: 4px;
+.bg-card {
+  background: rgba(30, 58, 138, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(251, 191, 36, 0.2);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.7);
+.border-hero {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.text-hero-yellow {
+  color: #fbbf24;
+}
+
+.text-hero-orange {
+  color: #f97316;
+}
+
+.text-hero-blue {
+  color: #60a5fa;
 }

@@ -1,3 +1,5 @@
+// Update your app/layout.tsx to handle loading better
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "./components/SessionProvider";
@@ -21,7 +23,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
         <SessionProvider>
-          {children}
+          <div className="min-h-screen">
+            {children}
+          </div>
         </SessionProvider>
       </body>
     </html>

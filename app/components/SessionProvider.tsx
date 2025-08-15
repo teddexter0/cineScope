@@ -1,3 +1,6 @@
+
+// Also update your app/components/SessionProvider.tsx
+
 'use client'
 
 import { SessionProvider as NextAuthSessionProvider } from 'next-auth/react'
@@ -9,7 +12,10 @@ interface Props {
 
 export function SessionProvider({ children }: Props) {
   return (
-    <NextAuthSessionProvider>
+    <NextAuthSessionProvider 
+      refetchInterval={5 * 60} // Refetch session every 5 minutes
+      refetchOnWindowFocus={true}
+    >
       {children}
     </NextAuthSessionProvider>
   )

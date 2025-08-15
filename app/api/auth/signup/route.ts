@@ -1,7 +1,11 @@
+// Create/update: app/api/auth/signup/route.ts
+
 import { NextRequest, NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
-// Simple signup without Prisma for now
+const prisma = new PrismaClient()
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -15,13 +19,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User already exists with this email' },
+        { status: 400 }
+      )
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // For now, just return success (we'll add database later)
+    // Create user in database
+    const user = await prisma.user.create({
+      data: {
+        email,
+        username,
+        name,
+        password: hashedPassword,
+      }
+    })
+
+    // Return success (don't send password back)
     return NextResponse.json({ 
       success: true, 
-      message: 'Account created successfully (demo mode)' 
+      message: 'Account created successfully!',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
     })
 
   } catch (error) {
