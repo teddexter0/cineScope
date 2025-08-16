@@ -1,5 +1,4 @@
-// Update your app/layout.tsx to handle loading better
-
+// app/layout.tsx - FIXED WITH SESSION PROVIDER
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "./components/SessionProvider";
