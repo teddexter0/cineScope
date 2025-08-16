@@ -11,7 +11,7 @@
 [![Next.js](https://img.shields.io/badge/⚡-Next.js_14-black?style=for-the-badge)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/🔷-TypeScript_5.0-blue?style=for-the-badge)](https://www.typescriptlang.org/)
 
-![CineScope Hero](https://via.placeholder.com/800x400/1a1a2e/ffffff?text=🎬+CineScope+AI+Movie+Companion)
+<img src="https://via.placeholder.com/800x400/1a1a2e/ffffff?text=🎬+CineScope+AI+Movie+Companion" alt="CineScope Hero">
 
 </div>
 
@@ -90,19 +90,19 @@ CineScope isn't just another movie recommendation app. It's a **custom AI-powere
 <div align="center">
 
 ### **Frontend Magic**
-![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)
+[![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)](https://www.framer.com/motion/)
 
 ### **Backend Power**
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)
-![NextAuth.js](https://img.shields.io/badge/NextAuth.js-7C3AED?style=for-the-badge&logo=next-auth&logoColor=white)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://www.prisma.io/)
+[![NextAuth.js](https://img.shields.io/badge/NextAuth.js-7C3AED?style=for-the-badge&logo=next-auth&logoColor=white)](https://next-auth.js.org/)
 
 ### **AI & Data**
-![Custom AI](https://img.shields.io/badge/Custom_AI_Engine-FF6B6B?style=for-the-badge&logo=robot&logoColor=white)
-![TMDB API](https://img.shields.io/badge/TMDB_API-01B4E4?style=for-the-badge&logo=themoviedatabase&logoColor=white)
+[![Custom AI](https://img.shields.io/badge/Custom_AI_Engine-FF6B6B?style=for-the-badge&logo=robot&logoColor=white)](https://www.custom-ai-engine.com/)
+[![TMDB API](https://img.shields.io/badge/TMDB_API-01B4E4?style=for-the-badge&logo=themoviedatabase&logoColor=white)](https://developers.themoviedb.org/3)
 
 </div>
 
@@ -111,229 +111,3 @@ CineScope isn't just another movie recommendation app. It's a **custom AI-powere
 ## 🛠️ Getting Started
 
 ### 📋 Prerequisites
-```bash
-Node.js 18+
-PostgreSQL database
-TMDB API key (free)
-```
-
-### ⚡ Quick Setup
-
-1. **Clone & Install**
-   ```bash
-   git clone https://github.com/teddexter0/cineScope.git
-   cd cinescope
-   npm install
-   ```
-
-2. **Environment Setup**
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   **Required Environment Variables:**
-   ```env
-   # Database
-   DATABASE_URL="your-postgresql-url"
-   
-   # Authentication
-   NEXTAUTH_SECRET="your-secret-key"
-   NEXTAUTH_URL="http://localhost:3000"
-   
-   # Movie Data
-   TMDB_API_KEY="your-tmdb-api-key"
-   ```
-
-3. **Database Setup**
-   ```bash
-   npx prisma db push
-   npx prisma generate
-   ```
-
-4. **Launch**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open [http://localhost:3000](http://localhost:3000)** 🎉
-
----
-
-## 🔧 Configuration
-
-### 🔑 Getting Your TMDB API Key
-
-1. Visit [TMDB](https://www.themoviedb.org/settings/api)
-2. Create a free account
-3. Request an API key
-4. Add to your `.env.local` file
-
-### 🎬 YouTube Trailer Configuration
-
-The app includes 6 epic movie trailers that rotate automatically:
-
-- **Spider-Man: No Way Home** - Multiverse madness
-- **Avengers: Endgame** - Epic finale 
-- **Dune: Part Two** - Sci-fi spectacular
-- **Jurassic World Rebirth** - 2025 dinosaur adventure
-- **Top Gun: Maverick** - High-flying action
-- **The Batman** - Dark Knight returns
-
-Trailers are carefully curated with optimal start times for maximum impact.
-
----
-
-## 🏗️ Project Architecture
-
-```
-cinescope/
-├── 🎯 app/                         # Next.js App Router
-│   ├── 🔐 (auth)/                 # Authentication pages
-│   │   ├── signin/                # Sign in page with trailers
-│   │   └── signup/                # Registration with validation
-│   ├── 🌐 api/                    # API routes
-│   │   ├── auth/                  # NextAuth.js endpoints
-│   │   ├── movies/                # Movie data & recommendations
-│   │   ├── watchlist/             # Watchlist management
-│   │   └── onboarding/            # User profiling
-│   ├── 📊 dashboard/              # Main application
-│   ├── 📝 onboarding/             # AI personality analysis
-│   ├── 📋 watchlist/              # Movie tracking
-│   ├── ⭐ ratings/                # User reviews & ratings
-│   └── 👥 social/                 # Community features
-├── 🧩 components/                 # Reusable components
-│   ├── YouTubeTrailerBackground   # Cinematic backgrounds
-│   └── SessionProvider           # Auth context
-├── 🔧 lib/                       # Core utilities
-│   ├── smart-ai-recommendation-engine # Custom AI system
-│   ├── movie-service             # TMDB integration
-│   ├── social-service            # Community features
-│   └── notification-service      # Smart alerts
-├── 🗄️ prisma/                     # Database schema
-└── 📄 types/                      # TypeScript definitions
-```
-
----
-
-## 🎯 AI Personality Types
-
-Our custom AI recognizes 6 distinct movie personality types:
-
-| 🧠 **Intellectual Explorer** | 💖 **Emotional Connector** | 🎉 **Entertainment Seeker** |
-|----------------------------|---------------------------|---------------------------|
-| Complex narratives, thought-provoking themes | Character-driven stories, emotional depth | Blockbusters, crowd-pleasers, fun |
-
-| 🚀 **Escapist Explorer** | 🎭 **Critical Analyst** | 🌟 **Nostalgic Dreamer** |
-|------------------------|----------------------|------------------------|
-| Fantasy, adventure, otherworldly | Artistic merit, technical excellence | Classic cinema, timeless stories |
-
----
-
-## 📈 Roadmap
-
-### 🎯 **Phase 1: Foundation** ✅
-- [x] Custom AI recommendation engine
-- [x] YouTube trailer backgrounds  
-- [x] User authentication & profiles
-- [x] Movie search & discovery
-- [x] Watchlist management
-- [x] Rating system
-
-### 🚀 **Phase 2: Intelligence** 🔄
-- [x] Advanced personality analysis
-- [x] Contextual recommendations
-- [ ] IMDB watchlist import
-- [ ] Smart notification system
-- [ ] Mood-based suggestions
-
-### 🌟 **Phase 3: Community** 📋
-- [ ] Social features & friend recommendations
-- [ ] Review system with spoiler protection
-- [ ] Taste compatibility scoring
-- [ ] Community challenges & lists
-
-### 🔮 **Phase 4: Advanced** 🌙
-- [ ] Mobile app (React Native)
-- [ ] Real-time watch parties
-- [ ] Chrome extension
-- [ ] API for developers
-- [ ] Premium features
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### 🛠️ Development Process
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Commit** your changes: `git commit -m 'Add amazing feature'`
-4. **Push** to the branch: `git push origin feature/amazing-feature`
-5. **Open** a Pull Request
-
-### 🐛 Bug Reports
-Found a bug? Please open an issue with:
-- Clear description of the problem
-- Steps to reproduce
-- Expected vs actual behavior
-- Screenshots if applicable
-
----
-
-## 📊 Performance & Analytics
-
-- **🚀 Sub-second recommendations**: Custom AI delivers results instantly
-- **🎯 97%+ accuracy**: Users consistently love our recommendations
-- **⚡ Optimized loading**: Intelligent caching and CDN integration
-- **📱 Mobile-first**: Responsive design works on all devices
-
----
-
-## 🛡️ Security & Privacy
-
-- **🔒 Secure authentication**: NextAuth.js with JWT tokens
-- **🛡️ Data protection**: All user data encrypted and secure
-- **🚫 No tracking**: Privacy-first approach, minimal data collection
-- **✅ Content moderation**: Safe, family-friendly environment
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-<div align="center">
-
-**Built with ❤️ by passionate movie lovers**
-
-Special thanks to:
-- 🎬 **TMDB** for comprehensive movie data
-- 🎥 **YouTube** for epic trailer experiences  
-- ⚡ **Vercel** for seamless deployment
-- 🌟 **The open source community** for amazing tools
-
-</div>
-
----
-
-## 📬 Contact & Support
-
-<div align="center">
-
-**Ted Dexter Sande** 
-[@teddexter0](https://github.com/teddexter0) • [teddexter0@gmail.com](mailto:teddexter0@gmail.com)
-
-**Project Link:** [https://github.com/teddexter0/cineScope](https://github.com/teddexter0/cineScope)
-
----
-
-### 🌟 **Star us on GitHub if CineScope helps you discover amazing movies!** ⭐
-
-*CineScope - Because life's too short for bad movies* 🎬✨
-
-</div>
