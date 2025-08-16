@@ -1,4 +1,4 @@
-// app/api/movies/search/route.ts - WORKING SEARCH API
+// app/api/movies/search/route.ts - IMPROVED SEARCH (Movies only for watchlist)
 import { NextRequest, NextResponse } from 'next/server'
 
 const TMDB_API_KEY = 'da4d264a4290972d086e0d21dce7cfeb'
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const query = searchParams.get('q')
-    const type = searchParams.get('type') || 'multi' // multi, movie, person
+    const type = searchParams.get('type') || 'multi'
     
     if (!query || query.length < 2) {
       return NextResponse.json({
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     else if (type === 'movie') {
       searchUrl = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=1`
     }
-    // Person search (actors, directors)
+    // Person search (actors, directors) - but no watchlist button
     else if (type === 'person') {
       searchUrl = `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=1`
     }
@@ -41,24 +41,36 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
     
-    // Filter and format results
+    // Filter and format results - IMPROVED LOGIC
     const results = data.results?.filter((item: any) => {
-      // Filter out items without images for better UX
+      // Only show quality content with images
       if (item.media_type === 'movie' || !item.media_type) {
-        return item.poster_path && item.vote_average > 0
+        return item.poster_path && item.vote_average > 0 && item.overview
       }
       if (item.media_type === 'person') {
         return item.profile_path && item.known_for?.length > 0
       }
+      if (item.media_type === 'tv') {
+        return false // Don't show TV shows for now
+      }
       return true
-    }).slice(0, 20) || [] // Limit to 20 results
+    }).slice(0, 15) || [] // Limit to 15 results
 
-    console.log(`✅ Found ${results.length} results for "${query}"`)
+    // Mark which items can be added to watchlist
+    const enhancedResults = results.map((item: any) => ({
+      ...item,
+      canAddToWatchlist: item.media_type === 'movie' || (!item.media_type && item.poster_path),
+      displayType: item.media_type === 'person' ? 
+        `${item.known_for_department || 'Actor'} - Known for: ${item.known_for?.slice(0, 2).map((k: any) => k.title || k.name).join(', ')}` :
+        item.media_type === 'movie' ? 'Movie' : 'Movie'
+    }))
+
+    console.log(`✅ Found ${enhancedResults.length} results for "${query}"`)
 
     return NextResponse.json({
       success: true,
       query,
-      results,
+      results: enhancedResults,
       total_results: data.total_results || 0
     })
 

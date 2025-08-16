@@ -1,6 +1,7 @@
 // app/dashboard/page.tsx
 'use client'
 
+import { smartAIEngine } from '@/lib/smart-ai-recommendation-engine'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -397,135 +398,186 @@ const [showSearchResults, setShowSearchResults] = useState(false)
       loadAIPersonalizedRecommendations()
     }
   }, [status, router])
-
-  const loadAIPersonalizedRecommendations = async () => {
-    setIsLoadingRecommendations(true)
+const loadAIPersonalizedRecommendations = async () => {
+  setIsLoadingRecommendations(true)
+  
+  try {
+    console.log('🤖 Starting SMART AI recommendation process...')
     
-    try {
-      console.log('🤖 Starting AI recommendation process...')
+    // Get user's onboarding responses
+    const onboardingAnswers = localStorage.getItem('onboardingAnswers')
+    
+    if (!onboardingAnswers) {
+      console.log('❌ No onboarding data found, redirecting...')
+      router.push('/onboarding')
+      return
+    }
+
+    const responses = JSON.parse(onboardingAnswers)
+    console.log('📝 User responses:', responses)
+
+    // AI Analysis with OLD engine for personality
+    const profile = aiEngine.analyzePersonality(responses)
+    setUserProfile(profile)
+    setAiInsight(profile.aiInsight)
+
+    // NEW: Use SMART AI for recommendations (this will be different each time)
+    console.log('🧠 Using SMART AI for fresh recommendations...')
+    const smartRecommendations = await smartAIEngine.generateIntelligentRecommendations(profile)
+
+    if (smartRecommendations.length > 0) {
+      setMovies(smartRecommendations)
       
-      // Get user's onboarding responses
-      const onboardingAnswers = localStorage.getItem('onboardingAnswers')
-      
-      if (!onboardingAnswers) {
-        console.log('❌ No onboarding data found, redirecting...')
-        router.push('/onboarding')
-        return
-      }
-
-      const responses = JSON.parse(onboardingAnswers)
-      console.log('📝 User responses:', responses)
-
-      // AI Analysis
-      const profile = aiEngine.analyzePersonality(responses)
-      setUserProfile(profile)
-      setAiInsight(profile.aiInsight)
-
-      // Fetch AI-powered movie recommendations
-      console.log('🎬 Fetching AI recommendations...')
-      const personalizedMovies = await aiEngine.fetchPersonalizedMovies(
-        profile.preferredGenres, 
-        profile.personalityType
-      )
-
-      setMovies(personalizedMovies)
-      
-      // Update stats based on successful AI analysis
+      // Update stats
       setRecommendationStats(prev => ({
         ...prev,
-        discovered: personalizedMovies.length,
+        discovered: smartRecommendations.length,
         accuracy: Math.min(99, 88 + Object.keys(profile.preferredGenres).length * 2)
       }))
 
-      console.log('✅ AI recommendations loaded successfully!')
-
-    } catch (error) {
-      console.error('❌ Error loading AI recommendations:', error)
-      
-      // Fallback to trending movies
-      try {
-        const fallbackMovies = await aiEngine.fetchTrendingMoviesPublic()
-        setMovies(fallbackMovies)
-        setAiInsight("We're still learning your preferences. These are popular movies to get started!")
-      } catch (fallbackError) {
-        console.error('❌ Fallback also failed:', fallbackError)
-        setAiInsight("Having trouble loading recommendations. Please refresh the page!")
-      }
-    } finally {
-      setIsLoadingRecommendations(false)
+      console.log('✅ SMART AI recommendations loaded successfully!', smartRecommendations.length, 'movies')
+    } else {
+      // Fallback to trending if smart AI fails
+      console.log('⚠️ Smart AI returned no results, using fallback...')
+      const fallbackMovies = await smartAIEngine.getFallbackRecommendations()
+      setMovies(fallbackMovies)
+      setAiInsight("We're still learning your preferences. Here are some popular movies to get started!")
     }
-  }
 
-  const handleAddToWatchlist = async (movie: any) => {
-    try {
-      const response = await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          movieId: movie.id,
-          status: 'to_watch',
-          notes: `Added from AI recommendations on ${new Date().toLocaleDateString()}`
-        })
-      })
-
-      const data = await response.json()
-      
-      if (data.success) {
-        showNotification(`${movie.title} added to watchlist! 🎬`, 'success')
-      } else {
-        showNotification(data.error || 'Failed to add to watchlist', 'error')
-      }
-    } catch (error) {
-      console.error('Add to watchlist error:', error)
-      showNotification('Something went wrong. Please try again.', 'error')
-    }
-  }
-
-  const handleLikeMovie = async (movie: any) => {
-    try {
-      const response = await fetch('/api/movies/rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          movieId: movie.id,
-          rating: 8.5,
-          review: 'Liked from AI recommendations'
-        })
-      })
-
-      const data = await response.json()
-      
-      if (data.success) {
-        showNotification(`Liked ${movie.title}! Teaching AI your taste... 👍`, 'success')
-        
-        // Update accuracy when user likes recommendations
-        setRecommendationStats(prev => ({
-          ...prev,
-          accuracy: Math.min(99, prev.accuracy + 1)
-        }))
-      } else {
-        showNotification(data.error || 'Failed to like movie', 'error')
-      }
-    } catch (error) {
-      console.error('Like movie error:', error)
-      showNotification('Something went wrong. Please try again.', 'error')
-    }
-  }
-
-  const showNotification = (message: string, type: 'success' | 'error') => {
-    const notification = document.createElement('div')
-    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg font-bold shadow-lg z-50 ${
-      type === 'success' 
-        ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-blue-900' 
-        : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-    }`
-    notification.textContent = message
-    document.body.appendChild(notification)
+  } catch (error) {
+    console.error('❌ Error loading SMART AI recommendations:', error)
     
+    // Fallback to trending movies
+    try {
+      const fallbackMovies = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=da4d264a4290972d086e0d21dce7cfeb`)
+        .then(res => res.json())
+        .then(data => data.results?.slice(0, 12) || [])
+      
+      setMovies(fallbackMovies)
+      setAiInsight("Having trouble with advanced AI. These are trending movies!")
+    } catch (fallbackError) {
+      console.error('❌ Even fallback failed:', fallbackError)
+      setAiInsight("Please refresh the page to try again!")
+    }
+  } finally {
+    setIsLoadingRecommendations(false)
+  }
+}
+
+// FIXED WATCHLIST FUNCTION with better error handling:
+const handleAddToWatchlist = async (movie: any) => {
+  try {
+    console.log('🎬 Adding to watchlist:', movie.title)
+    
+    const response = await fetch('/api/watchlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        movieId: movie.id,
+        status: 'to_watch',
+        notes: `Added from AI recommendations on ${new Date().toLocaleDateString()}`
+      })
+    })
+
+    const data = await response.json()
+    console.log('📋 Watchlist response:', data)
+    
+    if (response.ok && data.success) {
+      showNotification(`✅ ${movie.title} added to watchlist!`, 'success')
+      
+      // Update the button state visually
+      const button = document.querySelector(`[data-movie-id="${movie.id}"] .watchlist-btn`)
+      if (button) {
+        button.textContent = '✓ Added'
+        button.classList.add('bg-green-500', 'hover:bg-green-600')
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700')
+      }
+    } else {
+      if (data.error === 'Movie already in watchlist') {
+        showNotification(`📋 ${movie.title} is already in your watchlist`, 'error')
+      } else {
+        showNotification(`❌ Failed to add ${movie.title}: ${data.error || 'Unknown error'}`, 'error')
+      }
+    }
+  } catch (error) {
+    console.error('❌ Watchlist error:', error)
+    showNotification(`❌ Network error adding ${movie.title}. Please try again.`, 'error')
+  }
+}
+
+
+// FIXED LIKE FUNCTION with better feedback:
+const handleLikeMovie = async (movie: any) => {
+  try {
+    console.log('👍 Liking movie:', movie.title)
+    
+    const response = await fetch('/api/movies/rate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        movieId: movie.id,
+        rating: 8.5,
+        review: 'Liked from AI recommendations'
+      })
+    })
+
+    const data = await response.json()
+    console.log('⭐ Rating response:', data)
+    
+    if (response.ok && data.success) {
+      showNotification(`👍 Liked ${movie.title}! AI is learning your taste...`, 'success')
+      
+      // Update accuracy when user likes recommendations
+      setRecommendationStats(prev => ({
+        ...prev,
+        accuracy: Math.min(99, prev.accuracy + 1)
+      }))
+      
+      // Update the button state visually
+      const button = document.querySelector(`[data-movie-id="${movie.id}"] .like-btn`)
+      if (button) {
+        button.textContent = '💖 Loved'
+        button.classList.add('bg-pink-500', 'hover:bg-pink-600')
+        button.classList.remove('bg-gradient-to-r', 'from-yellow-400', 'to-orange-500')
+      }
+    } else {
+      showNotification(`❌ Failed to like ${movie.title}: ${data.error || 'Unknown error'}`, 'error')
+    }
+  } catch (error) {
+    console.error('❌ Like error:', error)
+    showNotification(`❌ Network error liking ${movie.title}. Please try again.`, 'error')
+  }
+}
+
+
+// IMPROVED NOTIFICATION SYSTEM - Replace your existing functions:
+const showNotification = (message: string, type: 'success' | 'error') => {
+  // Remove any existing notifications
+  const existingNotifications = document.querySelectorAll('.notification')
+  existingNotifications.forEach(notification => notification.remove())
+
+  const notification = document.createElement('div')
+  notification.className = `notification fixed top-4 right-4 px-6 py-3 rounded-lg font-bold shadow-lg z-50 transform transition-all duration-300 ${
+    type === 'success' 
+      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' 
+      : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+  }`
+  notification.textContent = message
+  document.body.appendChild(notification)
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)'
+  }, 100)
+  
+  // Animate out and remove
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)'
     setTimeout(() => {
       notification.remove()
-    }, 3000)
-  }
+    }, 300)
+  }, 3000)
+}
 
   const handleSignOut = async () => {
     await signOut({ redirect: false })
@@ -974,22 +1026,25 @@ function debounce(func: Function, wait: number) {
                           </span>
                         </div>
 
-                        <div className="flex gap-1 md:gap-2">
-                          <button 
-                            onClick={() => handleLikeMovie(movie)}
-                            className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-blue-900 py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
-                            title="Love this AI pick!"
-                          >
-                            🤖👍
-                          </button>
-                          <button 
-                            onClick={() => handleAddToWatchlist(movie)}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
-                            title="Add to watchlist"
-                          >
-                            ➕
-                          </button>
-                        </div>
+
+// UPDATE YOUR MOVIE GRID BUTTONS with data attributes for better tracking:
+// Replace your button section with this:
+<div className="flex gap-1 md:gap-2" data-movie-id={movie.id}>
+  <button 
+    onClick={() => handleLikeMovie(movie)}
+    className="like-btn flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-blue-900 py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
+    title="Love this AI pick!"
+  >
+    🤖👍
+  </button>
+  <button 
+    onClick={() => handleAddToWatchlist(movie)}
+    className="watchlist-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
+    title="Add to watchlist"
+  >
+    ➕
+  </button>
+</div>
                       </div>
                     </div>
                   </motion.div>
