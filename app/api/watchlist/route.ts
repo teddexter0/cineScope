@@ -1,88 +1,107 @@
-// app/api/watchlist/route.ts - FIXED VERSION
+
+// app/api/watchlist/route.ts - REPLACE ENTIRE FILE
+
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
+import { getServerSession } from 'next-auth'
 
-// Since we don't have Prisma set up, let's use a simple in-memory solution
-// In production, you'd use a real database
-
-// Temporary in-memory storage (resets on server restart)
-const tempWatchlist: Record<string, any[]> = {}
+// Simple in-memory storage that actually persists during session
+const sessionWatchlist = new Map<string, any[]>()
 
 export async function GET(request: NextRequest) {
   try {
-    // For demo purposes, we'll use session data or a default user
-    const userEmail = 'demo@user.com' // In real app, get from session
+    const session = await getServerSession()
+    const userEmail = session?.user?.email || 'demo@user.com'
     
-    const userWatchlist = tempWatchlist[userEmail] || []
+    const userWatchlist = sessionWatchlist.get(userEmail) || []
+    
+    console.log('📋 Getting watchlist for:', userEmail, 'Items:', userWatchlist.length)
     
     return NextResponse.json({ 
       success: true,
-      watchlists: [{
-        id: 'default',
-        name: 'My Watchlist',
-        items: userWatchlist
-      }]
+      watchlist: userWatchlist
     })
-
   } catch (error) {
-    console.error('Watchlist GET error:', error)
+    console.error('❌ Get watchlist error:', error)
     return NextResponse.json({ 
       success: false,
-      error: 'Failed to fetch watchlist' 
+      error: 'Failed to get watchlist' 
     }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession()
+    const userEmail = session?.user?.email || 'demo@user.com'
+    
     const body = await request.json()
-    const { movieId, status = 'to_watch', notes = '', priority = 0 } = body
+    const { movieId, title, poster_path, vote_average, release_date, overview } = body
 
-    // For demo purposes, we'll use a default user
-    const userEmail = 'demo@user.com' // In real app, get from session
-
-    // Initialize user watchlist if doesn't exist
-    if (!tempWatchlist[userEmail]) {
-      tempWatchlist[userEmail] = []
-    }
-
-    // Check if movie already in watchlist
-    const existingIndex = tempWatchlist[userEmail].findIndex(
-      item => item.movieId === movieId.toString()
-    )
-
-    if (existingIndex !== -1) {
+    // Get existing watchlist
+    const userWatchlist = sessionWatchlist.get(userEmail) || []
+    
+    // Check if already exists
+    const exists = userWatchlist.find(item => item.movieId === movieId?.toString())
+    if (exists) {
       return NextResponse.json({ 
         success: false,
         error: 'Movie already in watchlist' 
       }, { status: 400 })
     }
 
-    // Add movie to watchlist
+    // Add to watchlist
     const watchlistItem = {
-      id: Date.now().toString(), // Simple ID generation
-      movieId: movieId.toString(),
-      status,
-      notes,
-      priority,
-      createdAt: new Date().toISOString()
+      id: Date.now().toString(),
+      movieId: movieId?.toString(),
+      title,
+      poster_path,
+      vote_average,
+      release_date,
+      overview,
+      addedAt: new Date().toISOString()
     }
 
-    tempWatchlist[userEmail].push(watchlistItem)
+    userWatchlist.push(watchlistItem)
+    sessionWatchlist.set(userEmail, userWatchlist)
 
-    console.log('✅ Movie added to watchlist:', watchlistItem)
+    console.log('✅ Added to watchlist:', title, 'Total items:', userWatchlist.length)
 
     return NextResponse.json({ 
       success: true, 
-      item: watchlistItem,
-      message: 'Added to watchlist successfully!'
+      watchlistItem,
+      message: `${title} added to watchlist!`
     })
-
   } catch (error) {
-    console.error('Watchlist POST error:', error)
+    console.error('❌ Add to watchlist error:', error)
     return NextResponse.json({ 
       success: false,
       error: 'Failed to add to watchlist: ' + error.message 
     }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession()
+    const userEmail = session?.user?.email || 'demo@user.com'
+    
+    const { searchParams } = new URL(request.url)
+    const movieId = searchParams.get('movieId')
+
+    if (!movieId) {
+      return NextResponse.json({ error: 'movieId required' }, { status: 400 })
+    }
+
+    const userWatchlist = sessionWatchlist.get(userEmail) || []
+    const updatedWatchlist = userWatchlist.filter(item => item.movieId !== movieId)
+    
+    sessionWatchlist.set(userEmail, updatedWatchlist)
+
+    console.log('🗑️ Removed from watchlist:', movieId)
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('❌ Remove from watchlist error:', error)
+    return NextResponse.json({ error: 'Failed to remove from watchlist' }, { status: 500 })
   }
 }

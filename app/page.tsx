@@ -1,4 +1,5 @@
-// app/page.tsx - FIXED COLORS & WORKING TRAILERS
+// Replace your entire app/page.tsx with this FIXED version:
+
 'use client'
 
 import { motion } from 'framer-motion'
@@ -11,10 +12,7 @@ import {
   Brain, 
   Sparkles, 
   ArrowRight, 
-  Star,
-  Users,
-  Clock,
-  Zap
+  Star
 } from 'lucide-react'
 import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
 
@@ -45,253 +43,285 @@ export default function LandingPage() {
     )
   }
 
-  return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* 🎬 WORKING YOUTUBE TRAILERS BACKGROUND */}
+  // Replace your page return statement with this styled version:
+
+return (
+  <>
+    {/* 🎬 YOUTUBE TRAILERS BACKGROUND */}
+    <div className="youtube-background">
       <YouTubeTrailerBackground 
         autoplay={true}
         muted={true}
         showControls={false}
         loop={true}
-        className="absolute inset-0 z-0"
+        className="w-full h-full"
       />
-
-      {/* Main Content with Better Overlay */}
-      <div className="relative z-10 min-h-screen bg-black/30 backdrop-blur-[1px]">
-        {/* Header */}
-        <motion.header
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative z-20 p-4 md:p-6"
-        >
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                <Film className="w-4 h-4 md:w-6 md:h-6 text-blue-900" />
-              </div>
-              <h1 className="text-xl md:text-2xl font-bold text-white">CineScope</h1>
-            </div>
-            
-            <nav className="flex items-center gap-2 md:gap-4">
-              {session ? (
-                <>
-                  <Link 
-                    href="/dashboard" 
-                    className="bg-white/20 backdrop-blur-lg text-white px-3 py-2 md:px-4 md:py-2 rounded-lg hover:bg-white/30 transition-all text-sm md:text-base border border-white/30 font-medium"
-                  >
-                    Dashboard
-                  </Link>
-                  <button 
-                    onClick={handleSignOut}
-                    className="bg-white/20 backdrop-blur-lg text-white px-3 py-2 md:px-4 md:py-2 rounded-lg hover:bg-white/30 transition-all text-sm md:text-base border border-white/30 font-medium"
-                  >
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link 
-                    href="/auth/signin" 
-                    className="text-white hover:text-yellow-300 transition-colors text-sm md:text-base font-medium"
-                  >
-                    Sign In
-                  </Link>
-                  <Link 
-                    href="/auth/signup" 
-                    className="bg-gradient-to-r from-yellow-400 to-orange-500 text-blue-900 px-3 py-2 md:px-4 md:py-2 rounded-lg hover:from-yellow-500 hover:to-orange-600 transition-all text-sm md:text-base font-bold shadow-xl"
-                  >
-                    Get Started
-                  </Link>
-                </>
-              )}
-            </nav>
-          </div>
-        </motion.header>
-
-        {/* Hero Section - FIXED COLORS */}
-        <section className="relative px-4 py-10 md:px-6 md:py-20">
-          <div className="max-w-7xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-8"
-            >
-              <div className="inline-flex items-center gap-2 bg-black/40 backdrop-blur-lg rounded-full px-4 py-2 md:px-6 md:py-3 text-yellow-300 mb-6 md:mb-8 border border-yellow-400/30">
-                <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="text-xs md:text-sm font-bold">AI-Powered Movie Discovery</span>
-              </div>
-              
-              <h1 className="text-4xl md:text-6xl lg:text-8xl font-bold text-white mb-4 md:mb-6 leading-tight">
-                Never Wonder
-                <br />
-                {/* FIXED: Better contrast white text with subtle glow */}
-                <span className="text-white drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]">
-                  What to Watch
-                </span>
-                <br />
-                Again
-              </h1>
-              
-              <div className="backdrop-blur-lg bg-black/30 rounded-2xl p-6 max-w-4xl mx-auto border border-white/20">
-                <p className="text-lg md:text-xl text-white mb-6 md:mb-8 leading-relaxed">
-                  CineScope uses advanced AI to understand your unique taste and deliver movie recommendations 
-                  so perfect, you'll feel like we're reading your mind.
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center mb-12 md:mb-16 px-4"
-            >
-              {session ? (
-                <Link
-                  href="/dashboard"
-                  className="bg-gradient-to-r from-yellow-400 to-orange-500 text-blue-900 px-6 py-3 md:px-8 md:py-4 rounded-xl font-bold text-base md:text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 flex items-center justify-center gap-2 group shadow-2xl"
-                >
-                  Go to Dashboard
-                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/auth/signup"
-                    className="bg-gradient-to-r from-yellow-400 to-orange-500 text-blue-900 px-6 py-3 md:px-8 md:py-4 rounded-xl font-bold text-base md:text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 flex items-center justify-center gap-2 group shadow-2xl"
-                  >
-                    Get Started Free
-                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                  <Link
-                    href="#how-it-works"
-                    className="bg-black/40 backdrop-blur-lg text-white px-6 py-3 md:px-8 md:py-4 rounded-xl font-bold text-base md:text-lg hover:bg-black/50 transition-all duration-300 flex items-center justify-center gap-2 border border-white/30 shadow-xl"
-                  >
-                    <Brain className="w-4 h-4 md:w-5 md:h-5" />
-                    See How It Works
-                  </Link>
-                </>
-              )}
-            </motion.div>
-
-            {/* Stats with Better Contrast */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 max-w-4xl mx-auto px-4"
-            >
-              <div className="bg-black/40 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-white/30 shadow-xl">
-                <div className="text-2xl md:text-3xl font-bold text-yellow-400 mb-2">97%</div>
-                <div className="text-white text-sm md:text-base font-medium">AI Match Accuracy</div>
-              </div>
-              <div className="bg-black/40 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-white/30 shadow-xl">
-                <div className="text-2xl md:text-3xl font-bold text-orange-400 mb-2">2M+</div>
-                <div className="text-white text-sm md:text-base font-medium">Movies Analyzed</div>
-              </div>
-              <div className="bg-black/40 backdrop-blur-lg rounded-xl p-4 md:p-6 border border-white/30 shadow-xl">
-                <div className="text-2xl md:text-3xl font-bold text-yellow-400 mb-2">10s</div>
-                <div className="text-white text-sm md:text-base font-medium">To Perfect Match</div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* How It Works Section */}
-        <section id="how-it-works" className="relative px-4 py-20 md:px-6">
-          <div className="max-w-7xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-                How CineScope AI Works
-              </h2>
-              <div className="backdrop-blur-lg bg-black/30 rounded-2xl p-6 max-w-4xl mx-auto border border-white/20">
-                <p className="text-xl text-white">
-                  Our advanced AI analyzes your personality and movie preferences to deliver recommendations that feel like magic.
-                </p>
-              </div>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.0 }}
-                className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 border border-white/30 text-center shadow-xl"
-              >
-                <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <Brain className="w-8 h-8 text-blue-900" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-4">1. Personality Analysis</h3>
-                <p className="text-white/90">
-                  Our AI analyzes your responses to understand your unique movie personality and preferences.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2 }}
-                className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 border border-white/30 text-center shadow-xl"
-              >
-                <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <Zap className="w-8 h-8 text-blue-900" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-4">2. Smart Matching</h3>
-                <p className="text-white/90">
-                  We match your profile against millions of movies to find perfect matches for your taste.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.4 }}
-                className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 border border-white/30 text-center shadow-xl"
-              >
-                <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <Star className="w-8 h-8 text-blue-900" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-4">3. Perfect Recommendations</h3>
-                <p className="text-white/90">
-                  Get personalized movie suggestions that match your mood, time, and viewing preferences.
-                </p>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="relative px-4 py-20 md:px-6">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.6 }}
-              className="bg-black/40 backdrop-blur-lg rounded-3xl p-12 border border-white/30 shadow-2xl"
-            >
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                Ready to Discover Your Next Favorite Movie?
-              </h2>
-              <p className="text-xl text-white mb-8">
-                Join thousands of movie lovers who never wonder what to watch again.
-              </p>
-              <Link
-                href="/auth/signup"
-                className="bg-gradient-to-r from-yellow-400 to-orange-500 text-blue-900 px-8 py-4 rounded-xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 inline-flex items-center gap-2 shadow-2xl"
-              >
-                Start Your AI Journey
-                <Sparkles className="w-5 h-5" />
-              </Link>
-            </motion.div>
-          </div>
-        </section>
-      </div>
     </div>
-  )
+
+    {/* MAIN CONTENT OVERLAY */}
+    <div className="content-overlay">
+      {/* Header */}
+      <header>
+        <div className="header-container">
+          <div className="logo-section">
+            <div className="logo-icon">
+              <span style={{ fontSize: '1.25rem' }}>🎬</span>
+            </div>
+            <h1 className="logo-text">CineScope</h1>
+          </div>
+          
+          <nav className="nav-container">
+            {session ? (
+              <>
+                <a href="/dashboard" className="nav-link">Dashboard</a>
+                <button onClick={handleSignOut} className="nav-link">Sign Out</button>
+              </>
+            ) : (
+              <>
+                <a href="/auth/signin" className="nav-link">Sign In</a>
+                <a href="/auth/signup" className="nav-button">Get Started</a>
+              </>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="hero-section">
+        <div className="hero-container">
+          
+          {/* Badge */}
+          <div className="hero-badge">
+            <span>✨</span>
+            <span>AI-Powered Movie Discovery</span>
+          </div>
+          
+          {/* Main Heading */}
+          <h1 className="hero-title">
+            Never Wonder
+            <br />
+            <span className="hero-highlight">
+              What to Watch
+            </span>
+            <br />
+            Again
+          </h1>
+          
+          {/* Description */}
+          <div className="hero-description">
+            <p>
+              CineScope uses advanced AI to understand your unique taste and deliver movie recommendations 
+              so perfect, you'll feel like we're reading your mind.
+            </p>
+          </div>
+
+          {/* Buttons */}
+          <div className="cta-container">
+            {session ? (
+              <a href="/dashboard" className="cta-primary">
+                Go to Dashboard
+                <span>→</span>
+              </a>
+            ) : (
+              <>
+                <a href="/auth/signup" className="cta-primary">
+                  Get Started Free
+                  <span>→</span>
+                </a>
+                <a href="#how-it-works" className="cta-secondary">
+                  <span>🧠</span>
+                  See How It Works
+                </a>
+              </>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-number stat-yellow">97%</div>
+              <div className="stat-label">AI Match Accuracy</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number stat-orange">2M+</div>
+              <div className="stat-label">Movies Analyzed</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number stat-yellow">10s</div>
+              <div className="stat-label">To Perfect Match</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section id="how-it-works" style={{ padding: '5rem 1.5rem', background: 'rgba(0, 0, 0, 0.1)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
+          
+          <h2 style={{ 
+            fontSize: '3rem', 
+            fontWeight: '700', 
+            color: 'white', 
+            marginBottom: '3rem',
+            textShadow: '0 0 4px rgba(0,0,0,0.9), 2px 2px 4px rgba(0,0,0,1)'
+          }}>
+            How CineScope AI Works
+          </h2>
+          
+          <div style={{ 
+            background: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(12px)',
+            padding: '2rem',
+            borderRadius: '1rem',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            marginBottom: '4rem',
+            maxWidth: '800px',
+            margin: '0 auto 4rem auto'
+          }}>
+            <p style={{ 
+              fontSize: '1.25rem', 
+              color: 'white', 
+              textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+              margin: 0
+            }}>
+              Our advanced AI analyzes your personality and movie preferences to deliver recommendations that feel like magic.
+            </p>
+          </div>
+
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+            gap: '2rem' 
+          }}>
+            {/* Step 1 */}
+            <div className="stat-card">
+              <div style={{ 
+                width: '4rem', 
+                height: '4rem', 
+                background: 'linear-gradient(45deg, #facc15, #f97316)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem auto'
+              }}>
+                <span style={{ fontSize: '2rem' }}>🧠</span>
+              </div>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '700', 
+                color: 'white', 
+                marginBottom: '1rem',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+              }}>
+                1. Personality Analysis
+              </h3>
+              <p style={{ 
+                color: 'rgba(255, 255, 255, 0.9)', 
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                margin: 0
+              }}>
+                Our AI analyzes your responses to understand your unique movie personality and preferences.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="stat-card">
+              <div style={{ 
+                width: '4rem', 
+                height: '4rem', 
+                background: 'linear-gradient(45deg, #facc15, #f97316)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem auto'
+              }}>
+                <span style={{ fontSize: '2rem' }}>⚡</span>
+              </div>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '700', 
+                color: 'white', 
+                marginBottom: '1rem',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+              }}>
+                2. Smart Matching
+              </h3>
+              <p style={{ 
+                color: 'rgba(255, 255, 255, 0.9)', 
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                margin: 0
+              }}>
+                We match your profile against millions of movies to find perfect matches for your taste.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="stat-card">
+              <div style={{ 
+                width: '4rem', 
+                height: '4rem', 
+                background: 'linear-gradient(45deg, #facc15, #f97316)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem auto'
+              }}>
+                <span style={{ fontSize: '2rem' }}>⭐</span>
+              </div>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '700', 
+                color: 'white', 
+                marginBottom: '1rem',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+              }}>
+                3. Perfect Recommendations
+              </h3>
+              <p style={{ 
+                color: 'rgba(255, 255, 255, 0.9)', 
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                margin: 0
+              }}>
+                Get personalized movie suggestions that match your mood, time, and viewing preferences.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section style={{ padding: '5rem 1.5rem 8rem 1.5rem' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+          <div className="stat-card">
+            <h2 style={{ 
+              fontSize: '2.5rem', 
+              fontWeight: '700', 
+              color: 'white', 
+              marginBottom: '1.5rem',
+              textShadow: '0 0 4px rgba(0,0,0,0.9), 2px 2px 4px rgba(0,0,0,1)'
+            }}>
+              Ready to Discover Your Next Favorite Movie?
+            </h2>
+            <p style={{ 
+              fontSize: '1.25rem', 
+              color: 'white', 
+              marginBottom: '2rem',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+            }}>
+              Join thousands of movie lovers who never wonder what to watch again.
+            </p>
+            <a href="/auth/signup" className="cta-primary">
+              Start Your AI Journey
+              <span>✨</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </>
+)
 }

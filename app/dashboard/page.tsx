@@ -398,17 +398,16 @@ const [showSearchResults, setShowSearchResults] = useState(false)
       loadAIPersonalizedRecommendations()
     }
   }, [status, router])
+  // REPLACE the loadAIPersonalizedRecommendations function in app/dashboard/page.tsx with this:
+
 const loadAIPersonalizedRecommendations = async () => {
   setIsLoadingRecommendations(true)
   
   try {
     console.log('🤖 Starting SMART AI recommendation process...')
     
-    // Get user's onboarding responses
     const onboardingAnswers = localStorage.getItem('onboardingAnswers')
-    
     if (!onboardingAnswers) {
-      console.log('❌ No onboarding data found, redirecting...')
       router.push('/onboarding')
       return
     }
@@ -416,29 +415,30 @@ const loadAIPersonalizedRecommendations = async () => {
     const responses = JSON.parse(onboardingAnswers)
     console.log('📝 User responses:', responses)
 
-    // AI Analysis with OLD engine for personality
+    // AI Analysis with existing engine
     const profile = aiEngine.analyzePersonality(responses)
     setUserProfile(profile)
     setAiInsight(profile.aiInsight)
 
-    // NEW: Use SMART AI for recommendations (this will be different each time)
-    console.log('🧠 Using SMART AI for fresh recommendations...')
+    // Use the existing generateIntelligentRecommendations method
     const smartRecommendations = await smartAIEngine.generateIntelligentRecommendations(profile)
+    
+    // NEW: Also try keyword search
+    const keywordResults = await smartAIEngine.generateIntelligentKeywordSearch(profile)
+    
+    // Combine results
+    const allResults = [...smartRecommendations, ...keywordResults]
+    const uniqueResults = smartAIEngine.removeDuplicates(allResults)
 
-    if (smartRecommendations.length > 0) {
-      setMovies(smartRecommendations)
-      
-      // Update stats
+    if (uniqueResults.length > 0) {
+      setMovies(uniqueResults.slice(0, 12))
       setRecommendationStats(prev => ({
         ...prev,
-        discovered: smartRecommendations.length,
+        discovered: uniqueResults.length,
         accuracy: Math.min(99, 88 + Object.keys(profile.preferredGenres).length * 2)
       }))
-
-      console.log('✅ SMART AI recommendations loaded successfully!', smartRecommendations.length, 'movies')
+      console.log('✅ SMART AI recommendations loaded successfully!', uniqueResults.length, 'movies')
     } else {
-      // Fallback to trending if smart AI fails
-      console.log('⚠️ Smart AI returned no results, using fallback...')
       const fallbackMovies = await smartAIEngine.getFallbackRecommendations()
       setMovies(fallbackMovies)
       setAiInsight("We're still learning your preferences. Here are some popular movies to get started!")
@@ -447,7 +447,6 @@ const loadAIPersonalizedRecommendations = async () => {
   } catch (error) {
     console.error('❌ Error loading SMART AI recommendations:', error)
     
-    // Fallback to trending movies
     try {
       const fallbackMovies = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=da4d264a4290972d086e0d21dce7cfeb`)
         .then(res => res.json())
@@ -464,7 +463,7 @@ const loadAIPersonalizedRecommendations = async () => {
   }
 }
 
-// FIXED WATCHLIST FUNCTION with better error handling:
+// Replace your existing handleAddToWatchlist function with this:
 const handleAddToWatchlist = async (movie: any) => {
   try {
     console.log('🎬 Adding to watchlist:', movie.title)
@@ -474,8 +473,11 @@ const handleAddToWatchlist = async (movie: any) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         movieId: movie.id,
-        status: 'to_watch',
-        notes: `Added from AI recommendations on ${new Date().toLocaleDateString()}`
+        title: movie.title,
+        poster_path: movie.poster_path,
+        vote_average: movie.vote_average,
+        release_date: movie.release_date,
+        overview: movie.overview
       })
     })
 
@@ -505,19 +507,23 @@ const handleAddToWatchlist = async (movie: any) => {
   }
 }
 
+// Update your handleLikeMovie function in app/dashboard/page.tsx:
 
-// FIXED LIKE FUNCTION with better feedback:
 const handleLikeMovie = async (movie: any) => {
   try {
     console.log('👍 Liking movie:', movie.title)
     
-    const response = await fetch('/api/movies/rate', {
+    const response = await fetch('/api/movies/rate', {  // Changed from /ratings to /rate
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         movieId: movie.id,
+        title: movie.title,
+        poster_path: movie.poster_path,
+        vote_average: movie.vote_average,
+        release_date: movie.release_date,
         rating: 8.5,
-        review: 'Liked from AI recommendations'
+        review: 'Loved this AI recommendation! 🤖'
       })
     })
 
@@ -525,7 +531,7 @@ const handleLikeMovie = async (movie: any) => {
     console.log('⭐ Rating response:', data)
     
     if (response.ok && data.success) {
-      showNotification(`👍 Liked ${movie.title}! AI is learning your taste...`, 'success')
+      showNotification(`💖 Loved ${movie.title}! Check your ratings page to see it.`, 'success')
       
       // Update accuracy when user likes recommendations
       setRecommendationStats(prev => ({
@@ -548,7 +554,6 @@ const handleLikeMovie = async (movie: any) => {
     showNotification(`❌ Network error liking ${movie.title}. Please try again.`, 'error')
   }
 }
-
 
 // IMPROVED NOTIFICATION SYSTEM - Replace your existing functions:
 const showNotification = (message: string, type: 'success' | 'error') => {
@@ -679,40 +684,48 @@ function debounce(func: Function, wait: number) {
                   <User className="w-4 h-4" />
                   <span className="hidden md:inline">{session?.user?.name || 'User'}</span>
                 </button>
-                
-                {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white/10 backdrop-blur-lg rounded-lg border border-white/20 py-2">
-                    <button
-                      onClick={() => router.push('/watchlist')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                    >
-                      <Clock className="w-4 h-4" />
-                      My Watchlist
-                    </button>
-                    <button
-                      onClick={() => router.push('/social')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                    >
-                      <User className="w-4 h-4" />
-                      Social
-                    </button>
-                    <button
-                      onClick={() => router.push('/onboarding')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                    >
-                      <Brain className="w-4 h-4" />
-                      Retrain AI
-                    </button>
-                    <div className="border-t border-white/20 my-1"></div>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
-                    </button>
-                  </div>
-                )}
+                 
+
+{showUserMenu && (
+  <div className="absolute right-0 mt-2 w-48 bg-white/10 backdrop-blur-lg rounded-lg border border-white/20 py-2">
+    <button
+      onClick={() => router.push('/watchlist')}
+      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+    >
+      <Clock className="w-4 h-4" />
+      My Watchlist
+    </button>
+    <button
+      onClick={() => router.push('/ratings')}
+      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+    >
+      <Star className="w-4 h-4" />
+      My Ratings
+    </button>
+    <button
+      onClick={() => router.push('/social')}
+      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+    >
+      <User className="w-4 h-4" />
+      Social
+    </button>
+    <button
+      onClick={() => router.push('/onboarding')}
+      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+    >
+      <Brain className="w-4 h-4" />
+      Retrain AI
+    </button>
+    <div className="border-t border-white/20 my-1"></div>
+    <button
+      onClick={handleSignOut}
+      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+    >
+      <LogOut className="w-4 h-4" />
+      Sign Out
+    </button>
+  </div>
+)}
               </div>
             </nav>
           </div>
@@ -1026,9 +1039,7 @@ function debounce(func: Function, wait: number) {
                           </span>
                         </div>
 
-
-// UPDATE YOUR MOVIE GRID BUTTONS with data attributes for better tracking:
-// Replace your button section with this:
+ 
 <div className="flex gap-1 md:gap-2" data-movie-id={movie.id}>
   <button 
     onClick={() => handleLikeMovie(movie)}

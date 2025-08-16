@@ -1,7 +1,7 @@
-// Update your app/auth/signin/page.tsx to handle errors better
-
+// app/auth/signin/page.tsx
 'use client'
 
+import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground' 
 import { useState } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -54,6 +54,18 @@ export default function SignInPage() {
   }
 
   return (
+
+<div className="relative z-10"> 
+    
+<div className="absolute inset-0 z-0">
+  <YouTubeTrailerBackground 
+    autoplay={true}
+    muted={true}
+    showControls={false}
+    loop={true}
+    className="w-full h-full"
+  />
+</div>
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-orange-900 to-yellow-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
@@ -196,5 +208,6 @@ export default function SignInPage() {
         </motion.div>
       </div>
     </div>
+</div>
   )
-}
+  }

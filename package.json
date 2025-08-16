@@ -17,6 +17,7 @@
     "@prisma/client": "^5.22.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^6.4.17",
+    "@types/youtube-player": "^5.5.11",
     "bcryptjs": "^2.4.3",
     "framer-motion": "^11.5.4",
     "lucide-react": "^0.400.0",
@@ -27,6 +28,7 @@
     "openai": "^4.57.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-youtube": "^10.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

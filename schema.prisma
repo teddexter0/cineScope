@@ -1,171 +1,33 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
+// prisma/schema.prisma
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  username        String?   @unique
-  name            String?
-  password        String
-  emailVerified   DateTime?
-  image           String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  preferences     UserPreferences?
-  onboardingData  OnboardingData?
-  watchlists      Watchlist[]
-  ratings         Rating[]
-  interactions    UserInteraction[]
-  recommendations Recommendation[]
-
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  watchlist  Watchlist[]
   @@map("users")
 }
 
-model UserPreferences {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  personalityType String?
-  moodProfile     Json?
-  genreWeights    Json?
-  actorAffinities Json?
-  themePrefs      Json?
-  watchingTimes   Json?
-  sessionLength   String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("user_preferences")
-}
-
-model OnboardingData {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  responses       Json
-  aiAnalysis      Json?
-  completed       Boolean  @default(false)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("onboarding_data")
-}
-
 model Movie {
-  id              String   @id @default(cuid())
-  tmdbId          Int      @unique
-  title           String
-  originalTitle   String?
-  overview        String?
-  releaseDate     DateTime?
-  posterPath      String?
-  backdropPath    String?
-  genres          Json?
-  runtime         Int?
-  voteAverage     Float?
-  voteCount       Int?
-  popularity      Float?
-  themes          Json?
-  moodTags        Json?
-  complexity      Float?
-  
-  ratings         Rating[]
-  watchlistItems  WatchlistItem[]
-  recommendations Recommendation[]
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  id          String      @id @default(cuid())
+  tmdbId      Int         @unique @map("tmdb_id")
+  title       String
+  overview    String?
+  posterPath  String?     @map("poster_path")
+  releaseDate DateTime?   @map("release_date")
+  watchlist   Watchlist[]
   @@map("movies")
 }
 
-model Rating {
-  id        String   @id @default(cuid())
-  userId    String
-  movieId   String?
-  rating    Float
-  review    String?
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  movie     Movie?   @relation(fields: [movieId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-
-  @@unique([userId, movieId])
-  @@map("ratings")
-}
-
 model Watchlist {
-  id        String          @id @default(cuid())
-  userId    String
-  name      String
-  isDefault Boolean         @default(false)
-  
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     WatchlistItem[]
-  
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  movieId   String   @map("movie_id")
+  addedAt   DateTime @default(now()) @map("added_at")
+  watched   Boolean  @default(false)
 
-  @@map("watchlists")
-}
-
-model WatchlistItem {
-  id          String     @id @default(cuid())
-  watchlistId String
-  movieId     String?
-  status      String     @default("to_watch")
-  priority    Int        @default(0)
-  notes       String?
-  
-  watchlist   Watchlist  @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
-  movie       Movie?     @relation(fields: [movieId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  @@map("watchlist_items")
-}
-
-model Recommendation {
-  id          String   @id @default(cuid())
-  userId      String
-  movieId     String?
-  confidence  Float
-  reasoning   String?
-  context     String?
-  isViewed    Boolean  @default(false)
-  isLiked     Boolean?
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  movie       Movie?   @relation(fields: [movieId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-
-  @@map("recommendations")
-}
-
-model UserInteraction {
-  id          String   @id @default(cuid())
-  userId      String
-  action      String
-  target      String
-  context     Json?
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-
-  @@map("user_interactions")
+  @@id([userId, movieId])
+  @@map("watchlist")
 }
