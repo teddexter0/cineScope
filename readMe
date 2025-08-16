@@ -2,112 +2,71 @@
 
 <div align="center">
 
-**Your AI-Powered Movie Companion**
+**Your AI-Powered Movie Companion**  
+*Never wonder what to watch again. CineScope learns your taste and delivers movie recommendations so perfect, it feels like magic.*  
 
-*Never wonder what to watch again. CineScope uses advanced custom AI to understand your unique taste and delivers movie recommendations so perfect, you'll feel like we're reading your mind.*
+[![Demo](https://img.shields.io/badge/🌟-Live_Demo-success?style=for-the-badge)](https://cinescope-demo.vercel.app)  
+[![License](https://img.shields.io/badge/📄-MIT_License-blue?style=for-the-badge)](LICENSE)  
+[![Next.js](https://img.shields.io/badge/⚡-Next.js_14-black?style=for-the-badge)](https://nextjs.org/)  
+[![TypeScript](https://img.shields.io/badge/🔷-TypeScript_5.0-blue?style=for-the-badge)](https://www.typescriptlang.org/)  
 
-[![Demo](https://img.shields.io/badge/🌟-Live_Demo-success?style=for-the-badge)](https://cinescope-demo.vercel.app)
-[![License](https://img.shields.io/badge/📄-MIT_License-blue?style=for-the-badge)](LICENSE)
-[![Next.js](https://img.shields.io/badge/⚡-Next.js_14-black?style=for-the-badge)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/🔷-TypeScript_5.0-blue?style=for-the-badge)](https://www.typescriptlang.org/)
-
-<img src="https://via.placeholder.com/800x400/1a1a2e/ffffff?text=🎬+CineScope+AI+Movie+Companion" alt="CineScope Hero">
-
-</div>
-
-## 🌟 What Makes CineScope Special
-
-CineScope isn't just another movie recommendation app. It's a **custom AI-powered companion** that learns your unique taste through psychological analysis and delivers personalized recommendations with stunning cinematic backgrounds.
-
-### 🎥 **Immersive Cinematic Experience**
-- **YouTube Movie Trailers Background**: Experience epic movie trailers from blockbusters like Spider-Man: No Way Home, Avengers: Endgame, Jurassic World Rebirth 2025, and more
-- **Dynamic Trailer Rotation**: Fresh cinematic backgrounds that change automatically
-- **Interactive Trailer Controls**: Volume control, navigation, and movie information overlays
-
-### 🧠 **Proprietary AI Personality Engine**
-- **Custom AI Algorithm**: Our own intelligent recommendation system (no external APIs required)
-- **Deep Psychological Profiling**: Analyzes your responses to understand what you *really* love
-- **Semantic Genre Analysis**: Advanced keyword and mood mapping
-- **6 Distinct Personality Types**: Intellectual Explorer, Emotional Connector, Entertainment Seeker, Escapist Explorer, Critical Analyst, Nostalgic Dreamer
-
-### 🎯 **Smart Contextual Recommendations**
-- **Mood-Sensitive Picks**: Different suggestions based on your current emotional state
-- **Complexity Matching**: Content difficulty aligned with your preferences
-- **Fresh Content Discovery**: Algorithm ensures variety and prevents recommendation fatigue
-- **Real-time AI Scoring**: Advanced scoring system that weighs multiple factors
-
----
-
-## ✨ Core Features
-
-<table>
-<tr>
-<td width="50%">
-
-### 🔮 **AI-Powered Discovery**
-- **8-Question Personality Analysis**: Deep dive into your movie DNA
-- **Advanced Semantic Analysis**: Understanding beyond keywords
-- **Dynamic Preference Learning**: AI adapts as your taste evolves
-- **Contextual Recommendations**: Perfect picks for any situation
-
-</td>
-<td width="50%">
-
-### 🎬 **Cinematic Experience**
-- **Epic Trailer Backgrounds**: Blockbuster trailers as stunning backdrops
-- **Interactive Movie Search**: Live search with instant results
-- **Smart Watchlist Management**: Organized movie tracking
-- **Rating & Review System**: Express your thoughts and improve AI
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 👥 **Social Features** *(Coming Soon)*
-- **IMDB Watchlist Import**: Seamlessly import your existing lists
-- **Taste Compatibility Scoring**: Find users with similar preferences
-- **Safe Community Reviews**: Moderated content with spoiler protection
-- **Friend Recommendations**: Connect with like-minded movie lovers
-
-</td>
-<td width="50%">
-
-### 🛡️ **Privacy & Safety**
-- **No External AI Dependencies**: All processing done with custom algorithms
-- **Privacy-First Design**: Your data stays secure
-- **Content Moderation**: Safe, family-friendly environment
-- **Spoiler Protection**: Smart spoiler detection and warnings
-
-</td>
-</tr>
-</table>
-
----
-
-## 🚀 Tech Stack
-
-<div align="center">
-
-### **Frontend Magic**
-[![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)](https://www.framer.com/motion/)
-
-### **Backend Power**
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://www.prisma.io/)
-[![NextAuth.js](https://img.shields.io/badge/NextAuth.js-7C3AED?style=for-the-badge&logo=next-auth&logoColor=white)](https://next-auth.js.org/)
-
-### **AI & Data**
-[![Custom AI](https://img.shields.io/badge/Custom_AI_Engine-FF6B6B?style=for-the-badge&logo=robot&logoColor=white)](https://www.custom-ai-engine.com/)
-[![TMDB API](https://img.shields.io/badge/TMDB_API-01B4E4?style=for-the-badge&logo=themoviedatabase&logoColor=white)](https://developers.themoviedb.org/3)
+<img src="https://via.placeholder.com/800x400/1a1a2e/ffffff?text=🎬+CineScope+AI+Movie+Companion" alt="CineScope Hero" />
 
 </div>
 
 ---
 
-## 🛠️ Getting Started
+## 🌟 What Makes CineScope Special  
 
-### 📋 Prerequisites
+CineScope isn’t just another movie app — it’s a **personal AI-powered companion** that learns your taste, mood, and habits to recommend movies you’ll truly love.  
+
+### 🎥 Cinematic Experience  
+- Epic movie trailers as live backgrounds  
+- Automatic trailer rotation for freshness  
+- Interactive overlays & controls  
+
+### 🧠 AI Personality Engine  
+- Custom-built AI (no external APIs)  
+- Psychological profiling & mood analysis  
+- 6 unique personality types (Explorer, Connector, Analyst, Dreamer, etc.)  
+
+### 🎯 Smart Recommendations  
+- Mood-sensitive picks  
+- Complexity-matched suggestions  
+- Fresh & varied discovery  
+
+---
+
+## ✨ Core Features  
+
+- 🔮 **AI Discovery**: Personality quiz, evolving taste learning  
+- 🎬 **Cinematic Search**: Instant search, watchlist, reviews  
+- 👥 **Social (Coming Soon)**: Taste matching, friend recs, safe community reviews  
+- 🛡️ **Privacy First**: No external AI, spoiler protection, secure data  
+
+---
+
+## 🚀 Tech Stack  
+
+**Frontend**  
+- Next.js 14 · TypeScript 5 · Tailwind CSS · Framer Motion  
+
+**Backend**  
+- PostgreSQL · Prisma · NextAuth.js  
+
+**AI & Data**  
+- Custom AI Engine · TMDB API  
+
+---
+
+## 🛠️ Getting Started  
+
+### 📋 Prerequisites  
+- Node.js 18+  
+- PostgreSQL database  
+
+### ⚡ Installation  
+```bash
+git clone https://github.com/teddexter0/cinescope.git
+cd cinescope
+npm install
