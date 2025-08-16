@@ -1,4 +1,4 @@
-// Create: app/ratings/page.tsx
+// app/ratings/page.tsx - FIXED VERSION
 
 'use client'
 
@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { Star, Heart, Calendar, ArrowLeft } from 'lucide-react'
+import { Star, Heart, Calendar, ArrowLeft, Film } from 'lucide-react'
 
 export default function RatingsPage() {
   const { data: session, status } = useSession()
@@ -28,30 +28,45 @@ export default function RatingsPage() {
 
   const loadRatings = async () => {
     try {
-      const response = await fetch('/api/movies/rate')  // Changed from /ratings to /rate
+      console.log('⭐ Loading ratings...')
+      const response = await fetch('/api/movies/rate')
       const data = await response.json()
       
       console.log('⭐ Ratings API response:', data)
       
-      if (data.success) {
-        setRatings(data.ratings || [])
-        console.log('⭐ Loaded ratings:', data.ratings?.length || 0, 'items')
+      if (data.success && data.ratings) {
+        setRatings(data.ratings)
+        console.log('⭐ Loaded ratings:', data.ratings.length, 'items')
+      } else {
+        console.log('⭐ No ratings found or API error')
+        setRatings([])
       }
     } catch (error) {
       console.error('❌ Error loading ratings:', error)
+      setRatings([])
     } finally {
       setIsLoading(false)
     }
   }
 
   const getPosterUrl = (posterPath: string | null) => {
+    if (posterPath && posterPath.startsWith('http')) {
+      return posterPath
+    }
     if (posterPath) {
       return `https://image.tmdb.org/t/p/w500${posterPath}`
     }
     return `data:image/svg+xml;base64,${btoa(`
       <svg width="300" height="450" xmlns="http://www.w3.org/2000/svg">
-        <rect width="300" height="450" fill="#374151"/>
-        <text x="50%" y="50%" text-anchor="middle" fill="white" font-size="48">⭐</text>
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <rect width="300" height="450" fill="url(#grad)"/>
+        <text x="50%" y="45%" text-anchor="middle" fill="white" font-size="48">⭐</text>
+        <text x="50%" y="60%" text-anchor="middle" fill="white" font-size="14" font-family="Arial">Rated Movie</text>
       </svg>
     `)}`
   }
@@ -108,7 +123,7 @@ export default function RatingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {ratings.map((rating, index) => (
               <motion.div
-                key={rating.id}
+                key={rating.id || index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -139,7 +154,7 @@ export default function RatingsPage() {
                           <Star
                             key={i}
                             className={`w-4 h-4 ${
-                              i < Math.floor(rating.rating / 2) 
+                              i < Math.floor((rating.rating || 0) / 2) 
                                 ? 'text-yellow-400 fill-current' 
                                 : 'text-gray-400'
                             }`}
@@ -155,9 +170,17 @@ export default function RatingsPage() {
                     <div className="flex items-center gap-1 text-white/60 text-sm">
                       <Calendar className="w-3 h-3" />
                       <span>
-                        {new Date(rating.createdAt).toLocaleDateString()}
+                        {rating.createdAt ? new Date(rating.createdAt).toLocaleDateString() : 'Recently'}
                       </span>
                     </div>
+
+                    {/* Movie Year */}
+                    {rating.release_date && (
+                      <div className="flex items-center gap-1 text-white/50 text-sm">
+                        <Film className="w-3 h-3" />
+                        <span>{new Date(rating.release_date).getFullYear()}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -190,13 +213,13 @@ export default function RatingsPage() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-300">
-                  {(ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / ratings.length).toFixed(1)}
+                  {ratings.length > 0 ? (ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / ratings.length).toFixed(1) : '0.0'}
                 </div>
                 <div className="text-white/60 text-sm">Avg Rating</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-300">
-                  {ratings.filter(r => r.rating >= 8).length}
+                  {ratings.filter(r => (r.rating || 0) >= 8).length}
                 </div>
                 <div className="text-white/60 text-sm">Loved (8+)</div>
               </div>

@@ -1,7 +1,6 @@
 // app/dashboard/page.tsx
 'use client'
-
-import { smartAIEngine } from '@/lib/smart-ai-recommendation-engine'
+import { hybridAIEngine } from '@/lib/hybrid-ai-recommendation-engine'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -371,11 +370,7 @@ const debouncedSearch = useCallback(
   debounce((query: string) => handleSearch(query), 500),
   []
 )
-
   
-// Add this search functionality to your dashboard - UPDATE your existing dashboard
-
-// Add these state variables to your Dashboard component:
 const [searchResults, setSearchResults] = useState<any[]>([])
 const [isSearching, setIsSearching] = useState(false)
 const [showSearchResults, setShowSearchResults] = useState(false)
@@ -421,14 +416,14 @@ const loadAIPersonalizedRecommendations = async () => {
     setAiInsight(profile.aiInsight)
 
     // Use the existing generateIntelligentRecommendations method
-    const smartRecommendations = await smartAIEngine.generateIntelligentRecommendations(profile)
+    const smartRecommendations = await hybridAIEngine.generateIntelligentRecommendations(profile)
     
     // NEW: Also try keyword search
-    const keywordResults = await smartAIEngine.generateIntelligentKeywordSearch(profile)
+    const keywordResults = await hybridAIEngine.generateIntelligentKeywordSearch(profile)
     
     // Combine results
     const allResults = [...smartRecommendations, ...keywordResults]
-    const uniqueResults = smartAIEngine.removeDuplicates(allResults)
+    const uniqueResults = hybridAIEngine.removeDuplicates(allResults)
 
     if (uniqueResults.length > 0) {
       setMovies(uniqueResults.slice(0, 12))
@@ -439,7 +434,7 @@ const loadAIPersonalizedRecommendations = async () => {
       }))
       console.log('✅ SMART AI recommendations loaded successfully!', uniqueResults.length, 'movies')
     } else {
-      const fallbackMovies = await smartAIEngine.getFallbackRecommendations()
+      const fallbackMovies = await hybridAIEngine.getFallbackRecommendations()
       setMovies(fallbackMovies)
       setAiInsight("We're still learning your preferences. Here are some popular movies to get started!")
     }
@@ -462,68 +457,23 @@ const loadAIPersonalizedRecommendations = async () => {
     setIsLoadingRecommendations(false)
   }
 }
-
-// Replace your existing handleAddToWatchlist function with this:
-const handleAddToWatchlist = async (movie: any) => {
-  try {
-    console.log('🎬 Adding to watchlist:', movie.title)
-    
-    const response = await fetch('/api/watchlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        movieId: movie.id,
-        title: movie.title,
-        poster_path: movie.poster_path,
-        vote_average: movie.vote_average,
-        release_date: movie.release_date,
-        overview: movie.overview
-      })
-    })
-
-    const data = await response.json()
-    console.log('📋 Watchlist response:', data)
-    
-    if (response.ok && data.success) {
-      showNotification(`✅ ${movie.title} added to watchlist!`, 'success')
-      
-      // Update the button state visually
-      const button = document.querySelector(`[data-movie-id="${movie.id}"] .watchlist-btn`)
-      if (button) {
-        button.textContent = '✓ Added'
-        button.classList.add('bg-green-500', 'hover:bg-green-600')
-        button.classList.remove('bg-blue-600', 'hover:bg-blue-700')
-      }
-    } else {
-      if (data.error === 'Movie already in watchlist') {
-        showNotification(`📋 ${movie.title} is already in your watchlist`, 'error')
-      } else {
-        showNotification(`❌ Failed to add ${movie.title}: ${data.error || 'Unknown error'}`, 'error')
-      }
-    }
-  } catch (error) {
-    console.error('❌ Watchlist error:', error)
-    showNotification(`❌ Network error adding ${movie.title}. Please try again.`, 'error')
-  }
-}
-
 // Update your handleLikeMovie function in app/dashboard/page.tsx:
 
 const handleLikeMovie = async (movie: any) => {
   try {
-    console.log('👍 Liking movie:', movie.title)
+    console.log('👍 Liking movie:', movie.title || movie.name || 'Unknown Movie')
     
-    const response = await fetch('/api/movies/rate', {  // Changed from /ratings to /rate
+    const response = await fetch('/api/movies/rate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         movieId: movie.id,
-        title: movie.title,
+        title: movie.title || movie.name || 'Unknown Movie', // Handle both title and name
         poster_path: movie.poster_path,
         vote_average: movie.vote_average,
-        release_date: movie.release_date,
+        release_date: movie.release_date || movie.first_air_date, // Handle both movie and TV dates
         rating: 8.5,
-        review: 'Loved this AI recommendation! 🤖'
+        review: `Loved this AI recommendation! 🤖 ${movie.title || movie.name} was exactly what I was looking for.`
       })
     })
 
@@ -531,7 +481,7 @@ const handleLikeMovie = async (movie: any) => {
     console.log('⭐ Rating response:', data)
     
     if (response.ok && data.success) {
-      showNotification(`💖 Loved ${movie.title}! Check your ratings page to see it.`, 'success')
+      showNotification(`💖 Loved ${movie.title || movie.name || 'this movie'}! Check your ratings page to see it.`, 'success')
       
       // Update accuracy when user likes recommendations
       setRecommendationStats(prev => ({
@@ -547,13 +497,59 @@ const handleLikeMovie = async (movie: any) => {
         button.classList.remove('bg-gradient-to-r', 'from-yellow-400', 'to-orange-500')
       }
     } else {
-      showNotification(`❌ Failed to like ${movie.title}: ${data.error || 'Unknown error'}`, 'error')
+      showNotification(`❌ Failed to like ${movie.title || movie.name || 'movie'}: ${data.error || 'Unknown error'}`, 'error')
     }
   } catch (error) {
     console.error('❌ Like error:', error)
-    showNotification(`❌ Network error liking ${movie.title}. Please try again.`, 'error')
+    showNotification(`❌ Network error liking ${movie.title || movie.name || 'movie'}. Please try again.`, 'error')
   }
 }
+
+// Also update your handleAddToWatchlist function:
+
+const handleAddToWatchlist = async (movie: any) => {
+  try {
+    console.log('🎬 Adding to watchlist:', movie.title || movie.name || 'Unknown Movie')
+    
+    const response = await fetch('/api/watchlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        movieId: movie.id,
+        title: movie.title || movie.name || 'Unknown Movie', // Handle both title and name
+        poster_path: movie.poster_path,
+        vote_average: movie.vote_average,
+        release_date: movie.release_date || movie.first_air_date, // Handle both dates
+        overview: movie.overview || 'No description available'
+      })
+    })
+
+    const data = await response.json()
+    console.log('📋 Watchlist response:', data)
+    
+    if (response.ok && data.success) {
+      showNotification(`✅ ${movie.title || movie.name || 'Movie'} added to watchlist!`, 'success')
+      
+      // Update the button state visually
+      const button = document.querySelector(`[data-movie-id="${movie.id}"] .watchlist-btn`)
+      if (button) {
+        button.textContent = '✓ Added'
+        button.classList.add('bg-green-500', 'hover:bg-green-600')
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700')
+      }
+    } else {
+      if (data.error === 'Movie already in watchlist') {
+        showNotification(`📋 ${movie.title || movie.name || 'Movie'} is already in your watchlist`, 'error')
+      } else {
+        showNotification(`❌ Failed to add ${movie.title || movie.name || 'movie'}: ${data.error || 'Unknown error'}`, 'error')
+      }
+    }
+  } catch (error) {
+    console.error('❌ Watchlist error:', error)
+    showNotification(`❌ Network error adding ${movie.title || movie.name || 'movie'}. Please try again.`, 'error')
+  }
+}
+
 
 // IMPROVED NOTIFICATION SYSTEM - Replace your existing functions:
 const showNotification = (message: string, type: 'success' | 'error') => {

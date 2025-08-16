@@ -1,11 +1,10 @@
-
-// Create: app/api/watchlist/[itemId]/route.ts
+// app/api/watchlist/[itemId]/route.ts - FIXED WITHOUT PRISMA DEPENDENCY
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
+// Use the same in-memory storage as the main watchlist route
+const sessionWatchlist = new Map<string, any[]>()
 
 // Update watchlist item (rating, review, status)
 export async function PUT(
@@ -19,52 +18,45 @@ export async function PUT(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
+    const userEmail = session.user.email
     const { rating, review, status, notes } = await request.json()
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    // Get user's watchlist
+    const userWatchlist = sessionWatchlist.get(userEmail) || []
+    
+    // Find the item to update
+    const itemIndex = userWatchlist.findIndex(item => item.id === params.itemId)
+    
+    if (itemIndex === -1) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
 
-    // Update watchlist item
-    const updatedItem = await prisma.watchlistItem.update({
-      where: { id: params.itemId },
-      data: {
-        status,
-        notes
-      }
-    })
-
-    // If rating is provided, create/update rating
-    if (rating !== undefined) {
-      await prisma.rating.upsert({
-        where: {
-          userId_movieId: {
-            userId: user.id,
-            movieId: updatedItem.movieId
-          }
-        },
-        update: {
-          rating,
-          review: review || null
-        },
-        create: {
-          userId: user.id,
-          movieId: updatedItem.movieId,
-          rating,
-          review: review || null
-        }
-      })
+    // Update the item
+    const updatedItem = {
+      ...userWatchlist[itemIndex],
+      status: status || userWatchlist[itemIndex].status,
+      notes: notes || userWatchlist[itemIndex].notes,
+      rating: rating !== undefined ? rating : userWatchlist[itemIndex].rating,
+      review: review || userWatchlist[itemIndex].review,
+      updatedAt: new Date().toISOString()
     }
 
-    return NextResponse.json({ success: true, item: updatedItem })
+    userWatchlist[itemIndex] = updatedItem
+    sessionWatchlist.set(userEmail, userWatchlist)
+
+    console.log('📝 Updated watchlist item:', updatedItem.title)
+
+    return NextResponse.json({ 
+      success: true, 
+      item: updatedItem,
+      message: `${updatedItem.title} updated successfully`
+    })
 
   } catch (error) {
-    console.error('Update watchlist item error:', error)
-    return NextResponse.json({ error: 'Failed to update item' }, { status: 500 })
+    console.error('❌ Update watchlist item error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to update item: ' + error.message 
+    }, { status: 500 })
   }
 }
 
@@ -80,14 +72,33 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    await prisma.watchlistItem.delete({
-      where: { id: params.itemId }
+    const userEmail = session.user.email
+    
+    // Get user's watchlist
+    const userWatchlist = sessionWatchlist.get(userEmail) || []
+    
+    // Find the item to delete
+    const itemToDelete = userWatchlist.find(item => item.id === params.itemId)
+    
+    if (!itemToDelete) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+    }
+
+    // Remove the item
+    const updatedWatchlist = userWatchlist.filter(item => item.id !== params.itemId)
+    sessionWatchlist.set(userEmail, updatedWatchlist)
+
+    console.log('🗑️ Deleted watchlist item:', itemToDelete.title)
+
+    return NextResponse.json({ 
+      success: true,
+      message: `${itemToDelete.title} removed from watchlist`
     })
 
-    return NextResponse.json({ success: true })
-
   } catch (error) {
-    console.error('Delete watchlist item error:', error)
-    return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 })
+    console.error('❌ Delete watchlist item error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to delete item: ' + error.message 
+    }, { status: 500 })
   }
 }

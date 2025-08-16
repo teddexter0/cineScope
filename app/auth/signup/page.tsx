@@ -1,4 +1,4 @@
-// Update your app/auth/signup/page.tsx to include trailers:
+// app/auth/signup/page.tsx - FIXED TRAILERS VERSION
 
 'use client'
 
@@ -9,7 +9,6 @@ import { Film, Eye, EyeOff, User, Mail, AtSign, Sparkles, AlertCircle, CheckCirc
 import Link from 'next/link'
 import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
 
-// Your validation functions stay the same...
 const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 
 const validateEmail = (email: string) => {
@@ -55,7 +54,6 @@ export default function SignUpPage() {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     
-    // Real-time validation
     let validation = { isValid: true, message: '' }
     
     if (name === 'email') {
@@ -126,11 +124,11 @@ export default function SignUpPage() {
     }
   }
 
-  // Success page
+  // Success page with trailers
   if (success) {
     return (
       <>
-        {/* Trailers Background */}
+        {/* YouTube Trailers Background */}
         <div className="youtube-background">
           <YouTubeTrailerBackground 
             autoplay={true}
@@ -141,6 +139,7 @@ export default function SignUpPage() {
           />
         </div>
         
+        {/* Content Overlay */}
         <div className="content-overlay">
           <div className="min-h-screen flex items-center justify-center p-4">
             <motion.div
@@ -170,7 +169,7 @@ export default function SignUpPage() {
 
   return (
     <>
-      {/* 🎬 TRAILERS BACKGROUND */}
+      {/* 🎬 YOUTUBE TRAILERS BACKGROUND */}
       <div className="youtube-background">
         <YouTubeTrailerBackground 
           autoplay={true}
@@ -181,9 +180,9 @@ export default function SignUpPage() {
         />
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT OVERLAY */}
       <div className="content-overlay">
-        <div className="min-h-screen p-4 flex items-center justify-center relative overflow-hidden">
+        <div className="min-h-screen p-4 flex items-center justify-center">
           <div className="w-full max-w-md">
             {/* Logo/Brand */}
             <motion.div
@@ -194,8 +193,8 @@ export default function SignUpPage() {
               <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Film className="w-8 h-8 text-blue-900" />
               </div>
-              <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">Join CineScope</h1>
-              <p className="text-yellow-200 drop-shadow-lg">Start your personalized movie journey</p>
+              <h1 className="text-3xl font-bold text-white mb-2 logo-text">Join CineScope</h1>
+              <p className="text-yellow-200 logo-text">Start your personalized movie journey</p>
             </motion.div>
 
             {/* Sign Up Form */}

@@ -1,33 +1,567 @@
-// prisma/schema.prisma
+// prisma/schema.prisma - COMPREHENSIVE PRODUCTION-READY SCHEMA
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== USER MANAGEMENT =====
 model User {
-  id         String      @id @default(cuid())
-  email      String      @unique
-  name       String?
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
-  watchlist  Watchlist[]
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String?  @unique
+  name      String?
+  image     String?  // Profile picture URL
+  password  String?  // Hashed password
+  
+  // Account status
+  isActive     Boolean   @default(true)
+  emailVerified DateTime? @map("email_verified")
+  lastLoginAt   DateTime? @map("last_login_at")
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  accounts         Account[]
+  sessions         Session[]
+  preferences      UserPreferences?
+  onboardingData   OnboardingData?
+  watchlists       Watchlist[]
+  watchlistItems   WatchlistItem[]
+  ratings          Rating[]
+  reviews          Review[]
+  interactions     UserInteraction[]
+  notifications    Notification[]
+  
+  // Social features
+  followers        Follow[] @relation("UserFollowers")
+  following        Follow[] @relation("UserFollowing")
+  socialPosts      SocialPost[]
+  likes            Like[]
+  comments         Comment[]
+
   @@map("users")
 }
 
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+// ===== MOVIE DATA =====
 model Movie {
-  id          String      @id @default(cuid())
-  tmdbId      Int         @unique @map("tmdb_id")
-  title       String
-  overview    String?
-  posterPath  String?     @map("poster_path")
-  releaseDate DateTime?   @map("release_date")
-  watchlist   Watchlist[]
+  id            String    @id @default(cuid())
+  tmdbId        Int       @unique @map("tmdb_id")
+  imdbId        String?   @map("imdb_id")
+  title         String
+  originalTitle String?   @map("original_title")
+  overview      String?   @db.Text
+  tagline       String?
+  
+  // Media
+  posterPath    String?   @map("poster_path")
+  backdropPath  String?   @map("backdrop_path")
+  trailerUrl    String?   @map("trailer_url")
+  
+  // Details
+  releaseDate   DateTime? @map("release_date")
+  runtime       Int?      // in minutes
+  budget        BigInt?
+  revenue       BigInt?
+  status        String?   // Released, In Production, etc.
+  
+  // Ratings
+  voteAverage   Float     @default(0) @map("vote_average")
+  voteCount     Int       @default(0) @map("vote_count")
+  popularity    Float     @default(0)
+  
+  // Content
+  adult         Boolean   @default(false)
+  homepage      String?
+  originalLanguage String? @map("original_language")
+  
+  // JSON fields for complex data
+  genres        Json      @default("[]") // Array of genre objects
+  productionCompanies Json @default("[]") @map("production_companies")
+  productionCountries Json @default("[]") @map("production_countries")
+  spokenLanguages Json @default("[]") @map("spoken_languages")
+  keywords      Json      @default("[]") // For better recommendations
+  
+  // Timestamps
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  watchlistItems WatchlistItem[]
+  ratings        Rating[]
+  reviews        Review[]
+  cast           Cast[]
+  crew           Crew[]
+  socialPosts    SocialPost[]
+
   @@map("movies")
 }
 
-model Watchlist {
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String   @map("user_id")
-  movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
-  movieId   String   @map("movie_id")
-  addedAt   DateTime @default(now()) @map("added_at")
-  watched   Boolean  @default(false)
+// ===== CAST & CREW =====
+model Person {
+  id              String  @id @default(cuid())
+  tmdbId          Int     @unique @map("tmdb_id")
+  name            String
+  biography       String? @db.Text
+  birthday        DateTime?
+  deathday        DateTime?
+  placeOfBirth    String? @map("place_of_birth")
+  profilePath     String? @map("profile_path")
+  popularity      Float   @default(0)
+  knownForDepartment String? @map("known_for_department")
+  
+  // Relations
+  castRoles       Cast[]
+  crewRoles       Crew[]
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  @@id([userId, movieId])
-  @@map("watchlist")
+  @@map("people")
+}
+
+model Cast {
+  id          String @id @default(cuid())
+  movieId     String @map("movie_id")
+  personId    String @map("person_id")
+  character   String
+  order       Int    @default(0)
+  
+  movie       Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  person      Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([movieId, personId, character])
+  @@map("cast")
+}
+
+model Crew {
+  id          String @id @default(cuid())
+  movieId     String @map("movie_id")
+  personId    String @map("person_id")
+  job         String
+  department  String
+  
+  movie       Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  person      Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([movieId, personId, job])
+  @@map("crew")
+}
+
+// ===== USER PREFERENCES & AI =====
+model UserPreferences {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  
+  // AI Personality Analysis
+  personalityType   String?  @map("personality_type") // Intellectual Explorer, etc.
+  complexityLevel   Float    @default(0.5) @map("complexity_level") // 0-1 scale
+  
+  // Preferences
+  genreWeights      Json     @default("{}") @map("genre_weights") // {28: 0.8, 35: 0.6}
+  moodProfile       Json     @default("{}") @map("mood_profile") // Viewing patterns
+  preferredRuntimes Json     @default("[]") @map("preferred_runtimes") // [90-120, 120-150]
+  
+  // Viewing habits
+  preferredViewingTimes Json @default("[]") @map("preferred_viewing_times") // [19, 20, 21]
+  socialViewing     String   @default("mixed") // solo, social, mixed
+  rewatchFrequency  String   @default("medium") @map("rewatch_frequency") // low, medium, high
+  
+  // Content filters
+  adultContent      Boolean  @default(false) @map("adult_content")
+  minRating         Float    @default(0) @map("min_rating")
+  excludedGenres    Json     @default("[]") @map("excluded_genres")
+  preferredLanguages Json    @default("[]") @map("preferred_languages")
+  
+  // AI insights
+  aiInsight         String?  @db.Text @map("ai_insight")
+  lastAnalyzedAt    DateTime? @map("last_analyzed_at")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model OnboardingData {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  responses   Json     @default("{}") // Store all onboarding responses
+  completed   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_data")
+}
+
+// ===== WATCHLISTS & RATINGS =====
+model Watchlist {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String
+  description String?  @db.Text
+  isDefault   Boolean  @default(false) @map("is_default")
+  isPublic    Boolean  @default(false) @map("is_public")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       WatchlistItem[]
+
+  @@map("watchlists")
+}
+
+model WatchlistItem {
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  movieId     String     @map("movie_id")
+  watchlistId String?    @map("watchlist_id")
+  
+  status      String     @default("to_watch") // to_watch, watching, watched
+  priority    Int        @default(0)
+  notes       String?    @db.Text
+  
+  addedAt     DateTime   @default(now()) @map("added_at")
+  watchedAt   DateTime?  @map("watched_at")
+  
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie       Movie      @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  watchlist   Watchlist? @relation(fields: [watchlistId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, movieId])
+  @@map("watchlist_items")
+}
+
+model Rating {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  movieId     String    @map("movie_id")
+  rating      Float     // 0-10 scale
+  review      String?   @db.Text
+  
+  // Metadata
+  spoilers    Boolean   @default(false)
+  recommended Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie       Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, movieId])
+  @@map("ratings")
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  movieId     String    @map("movie_id")
+  title       String?
+  content     String    @db.Text
+  
+  // Review metadata
+  spoilerLevel String   @default("none") @map("spoiler_level") // none, minor, major
+  tags        Json      @default("[]") // ["cinematography", "acting"]
+  helpfulCount Int      @default(0) @map("helpful_count")
+  
+  // Moderation
+  isModerated Boolean   @default(false) @map("is_moderated")
+  isPublic    Boolean   @default(true) @map("is_public")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie       Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  comments    Comment[]
+
+  @@map("reviews")
+}
+
+// ===== SOCIAL FEATURES =====
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model SocialPost {
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  movieId     String?    @map("movie_id")
+  type        String     // review, rating, watchlist_add, recommendation
+  content     String?    @db.Text
+  
+  // Post metadata
+  visibility  String     @default("public") // public, friends, private
+  tags        Json       @default("[]")
+  mediaUrls   Json       @default("[]") @map("media_urls")
+  
+  // Engagement
+  likesCount  Int        @default(0) @map("likes_count")
+  commentsCount Int      @default(0) @map("comments_count")
+  sharesCount Int        @default(0) @map("shares_count")
+  
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie       Movie?     @relation(fields: [movieId], references: [id], onDelete: SetNull)
+  likes       Like[]
+  comments    Comment[]
+
+  @@map("social_posts")
+}
+
+model Like {
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  reviewId    String?    @map("review_id")
+  postId      String?    @map("post_id")
+  
+  createdAt   DateTime   @default(now()) @map("created_at")
+  
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review      Review?    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  post        SocialPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewId])
+  @@unique([userId, postId])
+  @@map("likes")
+}
+
+model Comment {
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  reviewId    String?    @map("review_id")
+  postId      String?    @map("post_id")
+  parentId    String?    @map("parent_id") // For nested comments
+  content     String     @db.Text
+  
+  // Moderation
+  isModerated Boolean    @default(false) @map("is_moderated")
+  
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review      Review?    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  post        SocialPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent      Comment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[]  @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+// ===== USER ACTIVITY & ANALYTICS =====
+model UserInteraction {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  action      String   // view, search, click, add_to_watchlist, rate, etc.
+  target      String   // movie_id, person_id, genre, etc.
+  context     Json     @default("{}") // Additional data about the interaction
+  
+  // Metadata
+  sessionId   String?  @map("session_id")
+  userAgent   String?  @map("user_agent")
+  ipAddress   String?  @map("ip_address")
+  referrer    String?
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, action])
+  @@index([userId, createdAt])
+  @@map("user_interactions")
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  type        String    // recommendation, social, system
+  title       String
+  message     String    @db.Text
+  
+  // Notification data
+  data        Json      @default("{}")
+  actionUrl   String?   @map("action_url")
+  
+  // Status
+  isRead      Boolean   @default(false) @map("is_read")
+  isDelivered Boolean   @default(false) @map("is_delivered")
+  
+  // Scheduling
+  scheduledFor DateTime? @map("scheduled_for")
+  deliveredAt  DateTime? @map("delivered_at")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// ===== RECOMMENDATION SYSTEM =====
+model RecommendationEngine {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  algorithmType  String   @map("algorithm_type") // collaborative, content_based, hybrid, ai
+  
+  // Algorithm parameters
+  parameters     Json     @default("{}")
+  
+  // Performance metrics
+  accuracy       Float    @default(0)
+  diversity      Float    @default(0)
+  novelty        Float    @default(0)
+  
+  // Recommendations generated
+  recommendations Json    @default("[]")
+  
+  // Metadata
+  generatedAt    DateTime @default(now()) @map("generated_at")
+  lastUsedAt     DateTime? @map("last_used_at")
+  
+  @@index([userId, algorithmType])
+  @@map("recommendation_engines")
+}
+
+model UserSimilarity {
+  id            String  @id @default(cuid())
+  userId1       String  @map("user_id_1")
+  userId2       String  @map("user_id_2")
+  similarity    Float   // 0-1 similarity score
+  
+  // Similarity factors
+  genreSimilarity    Float @default(0) @map("genre_similarity")
+  ratingSimilarity   Float @default(0) @map("rating_similarity")
+  personalitySimilarity Float @default(0) @map("personality_similarity")
+  
+  calculatedAt  DateTime @default(now()) @map("calculated_at")
+  
+  @@unique([userId1, userId2])
+  @@index([userId1, similarity])
+  @@map("user_similarities")
+}
+
+// ===== EXTERNAL INTEGRATIONS =====
+model ExternalImport {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  source      String    // imdb, letterboxd, trakt, etc.
+  importType  String    @map("import_type") // watchlist, ratings, reviews
+  
+  // Import data
+  originalData Json     @default("{}") @map("original_data")
+  mappedData   Json     @default("{}") @map("mapped_data")
+  
+  // Status
+  status      String    @default("pending") // pending, processing, completed, failed
+  itemsTotal  Int       @default(0) @map("items_total")
+  itemsProcessed Int    @default(0) @map("items_processed")
+  itemsSkipped Int      @default(0) @map("items_skipped")
+  errors      Json      @default("[]")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([userId, source])
+  @@map("external_imports")
+}
+
+// ===== SYSTEM TABLES =====
+model AppConfiguration {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?  @db.Text
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("app_configurations")
+}
+
+model SystemLog {
+  id          String   @id @default(cuid())
+  level       String   // debug, info, warn, error
+  message     String   @db.Text
+  context     Json     @default("{}")
+  
+  // Source tracking
+  source      String?  // api_route, background_job, etc.
+  userId      String?  @map("user_id")
+  sessionId   String?  @map("session_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([level, createdAt])
+  @@index([userId, createdAt])
+  @@map("system_logs")
 }
