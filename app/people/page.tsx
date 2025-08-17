@@ -1,510 +1,296 @@
-// app/people/page.tsx - COMPLETELY FIXED VERSION
+// app/people/page.tsx - MINIMAL VERSION (CRASH-PROOF)
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { 
-  Search, 
-  Star, 
-  Heart, 
-  ArrowLeft, 
-  User, 
-  Film, 
-  Calendar,
-  Plus,
-  Trash2,
-  Check
-} from 'lucide-react'
-import { persistentStorage } from '@/lib/persistent-storage'
-
-// Debounce helper function
-function debounce(func: Function, wait: number) {
-  let timeout: NodeJS.Timeout
-  return function executedFunction(...args: any[]) {
-    const later = () => {
-      clearTimeout(timeout)
-      func(...args)
-    }
-    clearTimeout(timeout)
-    timeout = setTimeout(later, wait)
-  }
-}
+import { ArrowLeft, User, Plus, Trash2, Search } from 'lucide-react'
 
 export default function FavoritePeoplePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
+  
   const [favoritePeople, setFavoritePeople] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [showSearchResults, setShowSearchResults] = useState(false)
-  const [addingPersonId, setAddingPersonId] = useState<number | null>(null)
 
+  // Get consistent storage key
+  const getStorageKey = () => {
+    const email = session?.user?.email || 'demo@user.com'
+    return `cinescope_favorite_people_${email.replace(/[^a-zA-Z0-9]/g, '_')}`
+  }
+
+  // Load favorites on mount
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-      return
-    }
-    
     if (status === 'authenticated') {
-      loadFavoritePeople()
+      try {
+        const stored = localStorage.getItem(getStorageKey())
+        const favorites = stored ? JSON.parse(stored) : []
+        setFavoritePeople(favorites)
+        console.log('✅ Loaded', favorites.length, 'favorite people')
+      } catch (error) {
+        console.error('❌ Load error:', error)
+        setFavoritePeople([])
+      }
     }
-  }, [status, router])
+  }, [status])
 
-  const loadFavoritePeople = async () => {
+  // Save to localStorage
+  const saveFavorites = (newFavorites: any[]) => {
     try {
-      const userEmail = session?.user?.email || 'demo@user.com'
-      
-      // Load from persistent storage - FIXED
-      const storedFavorites = persistentStorage.getFavoritePeople(userEmail)
-      setFavoritePeople(storedFavorites)
-      
-      console.log('👥 Loaded favorite people:', storedFavorites.length, 'people')
-      
+      localStorage.setItem(getStorageKey(), JSON.stringify(newFavorites))
+      console.log('💾 Saved', newFavorites.length, 'favorites')
+      return true
     } catch (error) {
-      console.error('❌ Error loading favorite people:', error)
-    } finally {
-      setIsLoading(false)
+      console.error('❌ Save error:', error)
+      return false
     }
   }
 
-  // COMPLETELY FIXED: Working search function
-  const handleSearch = async (query: string) => {
-    if (query.length < 2) {
-      setShowSearchResults(false)
-      setSearchResults([])
-      return
-    }
-
+  // Search function
+  const searchPeople = async () => {
+    if (!searchQuery || searchQuery.length < 2) return
+    
     setIsSearching(true)
     
     try {
-      console.log('🔍 Searching for people:', query)
-      const response = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}&type=person`)
+      const response = await fetch(`/api/movies/search?q=${encodeURIComponent(searchQuery)}&type=person`)
       const data = await response.json()
       
       if (data.success && data.results) {
-        // FIXED: Filter for people only and ensure good data
-        const peopleResults = data.results.filter((person: any) => 
-          person.media_type === 'person' && 
-          person.name && 
-          person.known_for_department
-        )
-        
-        setSearchResults(peopleResults)
-        setShowSearchResults(true)
-        console.log('🔍 Person search results:', peopleResults.length, 'people found')
+        setSearchResults(data.results)
+        console.log('🔍 Found', data.results.length, 'people')
       } else {
-        console.error('Search failed:', data.error)
         setSearchResults([])
-        setShowSearchResults(false)
+        alert('Search failed: ' + (data.error || 'No results'))
       }
     } catch (error) {
-      console.error('Person search error:', error)
+      console.error('Search error:', error)
+      alert('Search error: ' + error.message)
       setSearchResults([])
-      setShowSearchResults(false)
     } finally {
       setIsSearching(false)
     }
   }
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce((query: string) => handleSearch(query), 500),
-    []
-  )
-
-  // COMPLETELY FIXED: Add to favorites function
-  const addToFavorites = async (person: any) => {
+  // Add to favorites
+  const addToFavorites = (person: any) => {
     try {
-      setAddingPersonId(person.id)
-      const userEmail = session?.user?.email || 'demo@user.com'
-      
-      console.log('👤 Adding person to favorites:', {
+      // Check if already exists
+      if (favoritePeople.find(p => p.id === person.id)) {
+        alert(person.name + ' is already in favorites!')
+        return
+      }
+
+      const newPerson = {
         id: person.id,
         name: person.name,
-        department: person.known_for_department
-      })
-      
-      // FIXED: Ensure complete person object
-      const personData = {
-        id: person.id,
-        name: person.name || 'Unknown Person',
         profile_path: person.profile_path,
         known_for_department: person.known_for_department || 'Acting',
-        known_for: person.known_for || [],
-        popularity: person.popularity || 0
+        popularity: person.popularity || 0,
+        addedAt: new Date().toISOString()
       }
+
+      const updated = [...favoritePeople, newPerson]
+      setFavoritePeople(updated)
       
-      // Use persistent storage
-      const success = persistentStorage.addFavoritePerson(userEmail, personData)
-      
-      if (success) {
-        // FIXED: Immediately update UI state
-        const newFavorite = {
-          ...personData,
-          addedAt: new Date().toISOString()
-        }
-        
-        setFavoritePeople(prev => {
-          const updated = [...prev, newFavorite]
-          console.log('✅ Updated favorites list, now has:', updated.length, 'people')
-          return updated
-        })
-        
-        showNotification(`✅ ${person.name} added to favorites!`, 'success')
-        
-        // Clear search
-        setShowSearchResults(false)
+      if (saveFavorites(updated)) {
+        alert('✅ ' + person.name + ' added to favorites!')
+        setSearchResults([])
         setSearchQuery('')
-        
       } else {
-        showNotification(`📋 ${person.name} is already in your favorites`, 'error')
+        alert('❌ Failed to save favorite')
+        setFavoritePeople(favoritePeople) // revert
       }
     } catch (error) {
-      console.error('❌ Error adding to favorites:', error)
-      showNotification('Failed to add to favorites', 'error')
-    } finally {
-      setAddingPersonId(null)
+      console.error('Add error:', error)
+      alert('Error adding to favorites')
     }
   }
 
-  const removeFromFavorites = async (personId: number) => {
+  // Remove from favorites
+  const removeFromFavorites = (personId: number) => {
     try {
-      const userEmail = session?.user?.email || 'demo@user.com'
-      
-      // Find person to remove
-      const personToRemove = favoritePeople.find(p => p.id === personId)
-      
-      // Remove from persistent storage
-      const success = persistentStorage.removeFavoritePerson(userEmail, personId)
-      
-      if (success) {
-        // Update UI immediately
-        setFavoritePeople(prev => prev.filter(p => p.id !== personId))
-        showNotification(`🗑️ ${personToRemove?.name || 'Person'} removed from favorites`, 'success')
-      }
+      const person = favoritePeople.find(p => p.id === personId)
+      const updated = favoritePeople.filter(p => p.id !== personId)
+      setFavoritePeople(updated)
+      saveFavorites(updated)
+      alert('🗑️ ' + (person?.name || 'Person') + ' removed from favorites')
     } catch (error) {
-      console.error('❌ Error removing from favorites:', error)
+      console.error('Remove error:', error)
     }
   }
 
-  const getProfileUrl = (profilePath: string | null) => {
-    if (profilePath) {
-      return `https://image.tmdb.org/t/p/w500${profilePath}`
+  // FIXED: Simple placeholder image without btoa
+  const getImageUrl = (path: string | null) => {
+    if (path) {
+      return `https://image.tmdb.org/t/p/w500${path}`
     }
-    return `data:image/svg+xml;base64,${btoa(`
-      <svg width="300" height="450" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-          </linearGradient>
-        </defs>
-        <rect width="300" height="450" fill="url(#grad)"/>
-        <text x="50%" y="45%" text-anchor="middle" fill="white" font-size="48">👤</text>
-        <text x="50%" y="60%" text-anchor="middle" fill="white" font-size="14" font-family="Arial">Person</text>
-      </svg>
-    `)}`
+    // Use a simple CSS gradient instead of SVG with emoji
+    return '/api/placeholder/person' // We'll create a simple API endpoint
   }
 
-  const showNotification = (message: string, type: 'success' | 'error') => {
-    // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.notification')
-    existingNotifications.forEach(n => n.remove())
-
-    const notification = document.createElement('div')
-    notification.className = `notification fixed top-4 right-4 px-6 py-3 rounded-lg font-bold shadow-lg z-50 transform transition-all duration-300 ${
-      type === 'success' 
-        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' 
-        : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-    }`
-    notification.textContent = message
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      notification.style.transform = 'translateX(100%)'
-      setTimeout(() => notification.remove(), 300)
-    }, 3000)
-  }
-
-  // Check if person is already in favorites
-  const isPersonInFavorites = (personId: number) => {
-    return favoritePeople.some(p => p.id === personId)
-  }
-
-  if (status === 'loading' || isLoading) {
+  // Loading state
+  if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-purple-400 border-t-transparent rounded-full"
-        />
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
       </div>
     )
   }
 
+  // Redirect if not authenticated
+  if (status === 'unauthenticated') {
+    router.push('/auth/signin')
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-6xl mx-auto">
+        
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
-            <button 
-              onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 text-white hover:text-purple-300 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Dashboard
-            </button>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 flex items-center gap-3">
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="flex items-center gap-2 text-white hover:text-purple-300 mb-6 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Dashboard
+          </button>
+          
+          <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
             <User className="w-8 h-8 text-blue-400" />
             Favorite People
           </h1>
           <p className="text-purple-200">
-            {favoritePeople.length} favorite actors & directors • Discover and track your favorite talent
+            {favoritePeople.length} favorite people saved
           </p>
         </div>
 
-        {/* FIXED Search Bar */}
-        <div className="max-w-2xl mx-auto mb-8 relative">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                const query = e.target.value
-                setSearchQuery(query)
-                debouncedSearch(query)
-              }}
-              placeholder="Search for actors, directors, creators..."
-              className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-12 py-4 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
-            />
-            {isSearching && (
-              <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
+        {/* Search Section */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mb-8">
+          <h2 className="text-white text-xl mb-4">Search for People</h2>
+          
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && searchPeople()}
+                placeholder="Type a name like 'Zendaya' and click Search"
+                className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <button
+              onClick={searchPeople}
+              disabled={isSearching || searchQuery.length < 2}
+              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              {isSearching ? 'Searching...' : 'Search'}
+            </button>
           </div>
 
-          {/* FIXED Search Results Dropdown */}
-          {showSearchResults && searchResults.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 max-h-96 overflow-y-auto z-50"
-            >
-              <div className="p-4">
-                <h3 className="text-white font-medium mb-3">Search Results ({searchResults.length} people found)</h3>
-                <div className="space-y-2">
-                  {searchResults.map((person) => {
-                    const isInFavorites = isPersonInFavorites(person.id)
-                    const isAdding = addingPersonId === person.id
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-white text-lg mb-3">Search Results ({searchResults.length})</h3>
+              <div className="grid gap-3 max-h-80 overflow-y-auto">
+                {searchResults.map((person) => (
+                  <div key={person.id} className="bg-white/10 rounded-lg p-4 flex items-center gap-4">
+                    <div className="w-16 h-20 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
+                      <Image
+                        src={person.profile_path ? `https://image.tmdb.org/t/p/w500${person.profile_path}` : '/placeholder-person.jpg'}
+                        alt={person.name}
+                        width={64}
+                        height={80}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-person.jpg'
+                        }}
+                      />
+                    </div>
                     
-                    return (
-                      <div
-                        key={person.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                      >
-                        {/* Profile Image */}
-                        <div className="w-12 h-16 bg-gray-600 rounded overflow-hidden flex-shrink-0">
-                          <Image
-                            src={getProfileUrl(person.profile_path)}
-                            alt={person.name}
-                            width={48}
-                            height={64}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-white font-medium truncate">
-                            {person.name}
-                          </h4>
-                          <div className="flex items-center gap-2 text-sm text-white/60">
-                            <span>{person.known_for_department || 'Actor'}</span>
-                            {person.popularity && (
-                              <>
-                                <span>•</span>
-                                <div className="flex items-center gap-1">
-                                  <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                  <span>{person.popularity.toFixed(1)}</span>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                          {person.known_for && person.known_for.length > 0 && (
-                            <p className="text-xs text-white/50 truncate">
-                              Known for: {person.known_for.slice(0, 2).map((item: any) => item.title || item.name).join(', ')}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* FIXED: Add to Favorites Button */}
-                        <button
-                          onClick={() => addToFavorites(person)}
-                          disabled={isInFavorites || isAdding}
-                          className={`p-2 rounded-lg transition-all flex items-center gap-2 min-w-[120px] justify-center ${
-                            isInFavorites 
-                              ? 'bg-green-500/20 text-green-300 cursor-not-allowed' 
-                              : isAdding
-                              ? 'bg-purple-500/20 text-purple-300 cursor-not-allowed'
-                              : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300'
-                          }`}
-                          title={isInFavorites ? 'Already in favorites' : 'Add to favorites'}
-                        >
-                          {isAdding ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-purple-300 border-t-transparent rounded-full animate-spin" />
-                              <span className="hidden md:inline text-sm">Adding...</span>
-                            </>
-                          ) : isInFavorites ? (
-                            <>
-                              <Check className="w-4 h-4" />
-                              <span className="hidden md:inline text-sm">Added</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-4 h-4" />
-                              <span className="hidden md:inline text-sm">Add</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-medium text-lg">{person.name}</h4>
+                      <p className="text-white/70">{person.known_for_department || 'Actor'}</p>
+                      {person.popularity && (
+                        <p className="text-white/50 text-sm">Popularity: {person.popularity.toFixed(1)}</p>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => addToFavorites(person)}
+                      className="bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg transition-colors"
+                      title="Add to favorites"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            </motion.div>
-          )}
-
-          {/* No Results */}
-          {showSearchResults && searchResults.length === 0 && searchQuery.length > 1 && !isSearching && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 p-4 z-50"
-            >
-              <p className="text-white/60 text-center">No people found for "{searchQuery}"</p>
-            </motion.div>
+            </div>
           )}
         </div>
 
-        {/* Favorite People Grid */}
-        {favoritePeople.length === 0 ? (
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 text-center">
-            <div className="text-6xl mb-4">👥</div>
-            <h2 className="text-2xl font-bold text-white mb-4">No Favorite People Yet</h2>
-            <p className="text-white/70 mb-6">Search and add your favorite actors, directors, and creators!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {favoritePeople.map((person, index) => (
-              <motion.div
-                key={person.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative"
-              >
-                <div className="bg-white/10 backdrop-blur-lg rounded-lg overflow-hidden border border-white/20 hover:border-purple-400/50 transition-all duration-300">
-                  {/* Profile Image */}
-                  <div className="aspect-[2/3] relative overflow-hidden">
+        {/* Favorites Grid */}
+        <div>
+          <h2 className="text-white text-xl mb-4">Your Favorite People</h2>
+          
+          {favoritePeople.length === 0 ? (
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-12 border border-white/20 text-center">
+              <div className="text-6xl mb-4">🎭</div>
+              <h3 className="text-2xl font-bold text-white mb-4">No Favorite People Yet</h3>
+              <p className="text-white/70 text-lg">Search above to find and add your favorite actors and directors!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {favoritePeople.map((person) => (
+                <div key={person.id} className="bg-white/10 backdrop-blur-lg rounded-lg overflow-hidden border border-white/20 group hover:border-purple-400/50 transition-all">
+                  <div className="aspect-[2/3] relative bg-gray-700">
                     <Image
-                      src={getProfileUrl(person.profile_path)}
+                      src={person.profile_path ? `https://image.tmdb.org/t/p/w500${person.profile_path}` : '/placeholder-person.jpg'}
                       alt={person.name}
                       fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-300"
+                      className="object-cover"
                       sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 16vw"
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder-person.jpg'
+                      }}
                     />
                     
-                    {/* Remove Button */}
                     <button
                       onClick={() => removeFromFavorites(person.id)}
-                      className="absolute top-2 right-2 bg-red-500/80 backdrop-blur-sm p-2 rounded-full text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all duration-300"
+                      className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 p-2 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all"
                       title="Remove from favorites"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                   
-                  {/* Person Info */}
                   <div className="p-3">
-                    <h3 className="text-white font-medium text-sm mb-1 line-clamp-2">
+                    <h3 className="text-white font-medium text-sm line-clamp-2 mb-1">
                       {person.name}
                     </h3>
-                    
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-white/60 text-xs">
-                        {person.known_for_department || 'Actor'}
-                      </span>
-                      {person.popularity && (
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                          <span className="text-white/70 text-xs">{person.popularity.toFixed(1)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Known For */}
-                    {person.known_for && person.known_for.length > 0 && (
-                      <div className="text-xs text-white/50 line-clamp-1">
-                        {person.known_for.slice(0, 2).map((item: any) => item.title || item.name).join(', ')}
-                      </div>
+                    <p className="text-white/60 text-xs">
+                      {person.known_for_department}
+                    </p>
+                    {person.popularity > 0 && (
+                      <p className="text-white/50 text-xs mt-1">
+                        ⭐ {person.popularity.toFixed(1)}
+                      </p>
                     )}
-
-                    <div className="mt-2 text-xs text-white/40">
-                      Added {new Date(person.addedAt).toLocaleDateString()}
-                    </div>
                   </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        {/* Stats */}
-        {favoritePeople.length > 0 && (
-          <div className="mt-8 bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-400" />
-              Your Favorite People Stats
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-300">{favoritePeople.length}</div>
-                <div className="text-white/60 text-sm">Total People</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-300">
-                  {favoritePeople.filter(p => p.known_for_department === 'Acting').length}
-                </div>
-                <div className="text-white/60 text-sm">Actors</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-300">
-                  {favoritePeople.filter(p => p.known_for_department === 'Directing').length}
-                </div>
-                <div className="text-white/60 text-sm">Directors</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-300">
-                  {favoritePeople.filter(p => !['Acting', 'Directing'].includes(p.known_for_department)).length}
-                </div>
-                <div className="text-white/60 text-sm">Other</div>
-              </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'
+const TMDB_BASE_URL = process.env.TMDB_BASE_URL!
+const TMDB_IMAGE_BASE = process.env.TMDB_IMAGE_BASE!
 
 class TMDBService {
   private apiKey: string

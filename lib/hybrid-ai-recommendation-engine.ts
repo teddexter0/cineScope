@@ -1,7 +1,7 @@
 // lib/hybrid-ai-recommendation-engine.ts - FIXED AI RECOMMENDATIONS
 
 export class SmartAIRecommendationEngine {
-  private tmdbApiKey = 'da4d264a4290972d086e0d21dce7cfeb'
+  private tmdbApiKey = process.env.TMDB_API_KEY;
   
   constructor() {
     console.log('🎯 Enhanced AI Engine with TV Shows initialized')
