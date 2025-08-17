@@ -1,8 +1,11 @@
-// app/api/movies/search/route.ts - COMPLETELY FIXED FOR PEOPLE SEARCH
+// app/api/movies/search/route.ts - FIXED FOR VERCEL DEPLOYMENT
 
 import { NextRequest, NextResponse } from 'next/server'
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY!
+
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   // Declare variables at top level to ensure they're in scope for error handling
@@ -10,7 +13,8 @@ export async function GET(request: NextRequest) {
   let type: string = 'multi'
   
   try {
-    const { searchParams } = new URL(request.url)
+    // FIXED: Use searchParams directly instead of new URL()
+    const searchParams = request.nextUrl.searchParams
     query = searchParams.get('q')
     type = searchParams.get('type') || 'multi'
     
