@@ -11,52 +11,52 @@
 
 ## ✨ Features
 
-### 🧠 **AI Personality Analysis**
+### 🧠 AI Personality Analysis
 - Deep psychological profiling from your movie preferences
 - Understands what you *really* love, not just what you rate highly
 - Adapts to your mood and viewing context
 
-### 🎯 **Context-Aware Recommendations**
+### 🎯 Context-Aware Recommendations
 - Different suggestions for date night vs solo viewing
 - Time-based recommendations (morning energy vs late-night atmosphere)
 - Mood-sensitive picks based on your current state
 
-### ⏰ **Smart Timing Notifications**
+### ⏰ Smart Timing Notifications
 - Learns your optimal viewing times
 - Sends personalized recommendations at perfect moments
 - Respects your schedule and preferences
 
-### 👥 **Social Discovery**
+### 👥 Social Discovery
 - Import your IMDB watchlist seamlessly
 - Find users with similar taste
 - Safe, moderated community reviews
 - Friend recommendations based on compatibility scores
 
-### 🛡️ **Safety & Privacy First**
+### 🛡️ Safety & Privacy First
 - Content moderation and spoiler protection
 - Rate limiting and spam prevention
 - Privacy-focused design with optional social features
 
 ## 🚀 Tech Stack
 
-### **Frontend**
+### Frontend
 - **Next.js 14** - React framework with App Router
 - **TypeScript** - Type safety and better developer experience
 - **Tailwind CSS** - Utility-first styling
 - **Framer Motion** - Smooth animations and interactions
 
-### **Backend**
+### Backend
 - **Next.js API Routes** - Serverless functions
 - **Prisma** - Type-safe database ORM
 - **PostgreSQL** - Robust relational database
 - **NextAuth.js** - Authentication and session management
 
-### **AI & Data**
+### AI & Data
 - **TMDB API** - Movie data and posters
 - **OpenAI API** - Personality analysis and recommendations
 - **Custom ML Models** - Collaborative filtering and taste matching
 
-### **Infrastructure**
+### Infrastructure
 - **Vercel** - Deployment and hosting
 - **Supabase** - Database hosting
 - **Firebase** - Push notifications (planned)
@@ -194,10 +194,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Project Link: [https://github.com/teddexter0/cineScope](https://github.com/teddexter0/cineScope)
 
 ---
- 
 
 **Built with ⚡ and lots of ☕**
 
 *CineScope - Because life's too short for bad movies*
-
-</div>

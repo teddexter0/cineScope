@@ -1,9 +1,9 @@
-// lib/notification-service.ts
+// lib/notification-service.ts - FIXED IMPORTS
+
 import { PrismaClient } from '@prisma/client'
-import { AIOrchestrator } from './ai-services'
+import { hybridAIEngine } from './hybrid-ai-recommendation-engine' // FIXED: Use existing AI engine
 
 const prisma = new PrismaClient()
-const aiOrchestrator = new AIOrchestrator()
 
 interface UserActivity {
   userId: string
@@ -64,21 +64,26 @@ export class SmartNotificationService {
       const currentHour = new Date().getHours()
       const timeContext = this.getTimeContext(currentHour)
       
-      const recommendation = await aiOrchestrator.generateRecommendations(
-        userId,
-        user.preferences?.moodProfile as any,
-        [],
-        timeContext
-      )
+      // FIXED: Use the existing hybrid AI engine
+      const userProfile = user.preferences ? {
+        preferredGenres: user.preferences.genreWeights as any,
+        personalityType: user.preferences.personalityType,
+        moodPreferences: user.preferences.moodProfile as any,
+        complexityLevel: user.preferences.complexityLevel
+      } : null
 
-      if (recommendation.movieIds.length > 0) {
-        await this.sendNotification(user, {
-          type: 'optimal_timing',
-          title: `Perfect time to watch something! 🎬`,
-          message: `Based on your patterns, now is perfect for ${timeContext}`,
-          movieId: recommendation.movieIds[0],
-          reasoning: recommendation.reasoning
-        })
+      if (userProfile) {
+        const recommendations = await hybridAIEngine.generateEnhancedRecommendations(userProfile)
+        
+        if (recommendations.length > 0) {
+          await this.sendNotification(user, {
+            type: 'optimal_timing',
+            title: `Perfect time to watch something! 🎬`,
+            message: `Based on your patterns, now is perfect for ${timeContext}`,
+            movieId: recommendations[0].id,
+            reasoning: `AI picked ${recommendations[0].title} for your current mood`
+          })
+        }
       }
     } catch (error) {
       console.error('Error sending optimal timing notification:', error)
