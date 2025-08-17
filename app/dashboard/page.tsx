@@ -1,7 +1,7 @@
 // app/dashboard/page.tsx - COMPLETE FIXED VERSION
 
 'use client'
-
+ 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -81,6 +81,30 @@ export default function Dashboard() {
     }
   }, [status, router])
 
+  const handleAddPersonToFavorites = (person: any) => {
+  try {
+    const userEmail = session?.user?.email || 'demo@user.com'
+    console.log('🎭 Adding person to favorites from dashboard:', person.name)
+    
+    // Use the same persistent storage as people page
+    const success = persistentStorage.addFavoritePerson(userEmail, person)
+    
+    if (success) {
+      showNotification(`✅ ${person.name} added to favorite people! Check your People page to see them.`, 'success')
+      
+      // Close search
+      setShowSearchResults(false)
+      setSearchQuery('')
+      
+      console.log('🎉 Successfully added person from dashboard:', person.name)
+    } else {
+      showNotification(`📋 ${person.name} is already in your favorite people!`, 'error')
+    }
+  } catch (error) {
+    console.error('❌ Error adding person to favorites:', error)
+    showNotification(`❌ Error adding ${person.name} to favorites. Please try again.`, 'error')
+  }
+}
   // ENHANCED AI RECOMMENDATION LOADING - FIXED ASYNC/AWAIT
   const loadAIPersonalizedRecommendations = async () => {
     setIsLoadingRecommendations(true)
@@ -532,102 +556,119 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
+                
+                
+{/* FIXED Search Results Dropdown */}
+{showSearchResults && searchResults.length > 0 && (
+  <motion.div
+    initial={{ opacity: 0, y: -10 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 max-h-96 overflow-y-auto z-50"
+  >
+    <div className="p-4">
+      <h3 className="text-white font-medium mb-3">Search Results</h3>
+      <div className="space-y-2">
+        {searchResults.map((result, index) => (
+          <div
+            key={result.id}
+            className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+            onClick={() => {
+              // Only add movies/TV to main view, not people
+              if (result.media_type === 'movie' || result.media_type === 'tv' || !result.media_type) {
+                setMovies(prev => [result, ...prev.slice(0, 11)])
+                setShowSearchResults(false)
+                setSearchQuery('')
+              }
+            }}
+          >
+            {/* Image */}
+            <div className="w-12 h-16 bg-gray-600 rounded overflow-hidden flex-shrink-0">
+              {(result.poster_path || result.profile_path) ? (
+                <Image
+                  src={`https://image.tmdb.org/t/p/w92${result.poster_path || result.profile_path}`}
+                  alt={result.title || result.name}
+                  width={48}
+                  height={64}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs">
+                  {result.media_type === 'person' ? '👤' : result.media_type === 'tv' ? '📺' : '🎬'}
+                </div>
+              )}
+            </div>
 
-                {/* Search Results Dropdown */}
-                {showSearchResults && searchResults.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 max-h-96 overflow-y-auto z-50"
-                  >
-                    <div className="p-4">
-                      <h3 className="text-white font-medium mb-3">Search Results</h3>
-                      <div className="space-y-2">
-                        {searchResults.map((result, index) => (
-                          <div
-                            key={result.id}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                            onClick={() => {
-                              if (result.media_type === 'movie' || !result.media_type) {
-                                setMovies(prev => [result, ...prev.slice(0, 11)])
-                              }
-                              setShowSearchResults(false)
-                              setSearchQuery('')
-                            }}
-                          >
-                            {/* Image */}
-                            <div className="w-12 h-16 bg-gray-600 rounded overflow-hidden flex-shrink-0">
-                              {(result.poster_path || result.profile_path) ? (
-                                <Image
-                                  src={`https://image.tmdb.org/t/p/w92${result.poster_path || result.profile_path}`}
-                                  alt={result.title || result.name}
-                                  width={48}
-                                  height={64}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs">
-                                  {result.media_type === 'person' ? '👤' : result.media_type === 'tv' ? '📺' : '🎬'}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-white font-medium truncate">
-                                {result.title || result.name}
-                              </h4>
-                              <div className="flex items-center gap-2 text-sm text-white/60">
-                                <span className="capitalize">
-                                  {result.media_type === 'movie' ? 'Movie' : 
-                                   result.media_type === 'person' ? 'Person' : 
-                                   result.media_type === 'tv' ? 'TV Show' : 'Movie'}
-                                </span>
-                                {(result.release_date || result.first_air_date) && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{new Date(result.release_date || result.first_air_date).getFullYear()}</span>
-                                  </>
-                                )}
-                                {result.vote_average > 0 && (
-                                  <>
-                                    <span>•</span>
-                                    <div className="flex items-center gap-1">
-                                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                      <span>{result.vote_average.toFixed(1)}</span>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              {result.known_for && result.known_for.length > 0 && (
-                                <p className="text-xs text-white/50 truncate">
-                                  Known for: {result.known_for.slice(0, 2).map((item: any) => item.title || item.name).join(', ')}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Action Button - FIXED: Show correct button based on search type */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (result.media_type === 'person') {
-                                  // For people, add to favorites (will need to implement)
-                                  showNotification(`👤 ${result.name} - Person search! Use the People page to add to favorites.`, 'error')
-                                } else if (result.media_type === 'movie' || result.media_type === 'tv' || !result.media_type) {
-                                  handleAddToWatchlist(result)
-                                }
-                              }}
-                              className="bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 p-2 rounded-lg transition-colors"
-                              title={result.media_type === 'person' ? 'Go to People page to add' : 'Add to watchlist'}
-                            >
-                              {result.media_type === 'person' ? '👤' : <Plus className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <h4 className="text-white font-medium truncate">
+                {result.title || result.name}
+              </h4>
+              <div className="flex items-center gap-2 text-sm text-white/60">
+                <span className="capitalize">
+                  {result.media_type === 'movie' ? 'Movie' : 
+                   result.media_type === 'person' ? 'Person' : 
+                   result.media_type === 'tv' ? 'TV Show' : 'Movie'}
+                </span>
+                {(result.release_date || result.first_air_date) && (
+                  <>
+                    <span>•</span>
+                    <span>{new Date(result.release_date || result.first_air_date).getFullYear()}</span>
+                  </>
                 )}
+                {result.vote_average > 0 && (
+                  <>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                      <span>{result.vote_average.toFixed(1)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              {result.known_for && result.known_for.length > 0 && (
+                <p className="text-xs text-white/50 truncate">
+                  Known for: {result.known_for.slice(0, 2).map((item: any) => item.title || item.name).join(', ')}
+                </p>
+              )}
+              {result.known_for_department && (
+                <p className="text-xs text-white/50">
+                  {result.known_for_department}
+                </p>
+              )}
+            </div>
+
+            {/* FIXED: Action Button with proper person handling */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                console.log('🔍 Search result clicked:', result.media_type, result.name || result.title)
+                
+                if (result.media_type === 'person') {
+                  // FIXED: Use the function we defined above
+                  handleAddPersonToFavorites(result)
+                } else if (result.media_type === 'movie' || result.media_type === 'tv' || !result.media_type) {
+                  handleAddToWatchlist(result)
+                }
+              }}
+              className={`p-2 rounded-lg transition-colors ${
+                result.media_type === 'person' 
+                  ? 'bg-blue-400/20 hover:bg-blue-400/30 text-blue-300' 
+                  : 'bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300'
+              }`}
+              title={result.media_type === 'person' ? 'Add to favorite people' : 'Add to watchlist'}
+            >
+              {result.media_type === 'person' ? (
+                <User className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  </motion.div>
+)}
 
                 {/* No Results */}
                 {showSearchResults && searchResults.length === 0 && searchQuery.length > 1 && !isSearching && (
