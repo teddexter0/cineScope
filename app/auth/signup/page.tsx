@@ -1,14 +1,13 @@
-// app/auth/signup/page.tsx - FIXED HYDRATION & TRAILERS
-
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react' // <- ADD THIS LINE
 import { motion, AnimatePresence } from 'framer-motion'
 import { Film, Eye, EyeOff, User, Mail, AtSign, Sparkles, AlertCircle, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
-
+ 
 const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 
 const validateEmail = (email: string) => {
@@ -95,40 +94,56 @@ export default function SignUpPage() {
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
+  } 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!validateForm()) return
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  if (!validateForm()) return
 
-    setIsLoading(true)
-    setErrors({})
+  setIsLoading(true)
+  setErrors({})
 
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
+  try {
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    })
 
-      const data = await response.json()
+    const data = await response.json()
 
-      if (response.ok) {
-        setSuccess(true)
-      } else {
-        if (data.error.includes('already exists')) {
-          setErrors({ email: 'An account with this email already exists' })
+    if (response.ok) {
+      setSuccess(true)
+      
+      // FIXED: Auto-signin after successful signup
+      setTimeout(async () => {
+        const result = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false
+        })
+        
+        if (result?.ok) {
+          router.push('/onboarding') // Go straight to onboarding
         } else {
-          setErrors({ general: data.error || 'Registration failed' })
+          router.push('/auth/signin') // Fallback to signin
         }
+      }, 2000) // Wait 2 seconds to show success message
+      
+    } else {
+      if (data.error.includes('already exists')) {
+        setErrors({ email: 'An account with this email already exists. Try signing in instead.' })
+      } else {
+        setErrors({ general: data.error || 'Registration failed' })
       }
-    } catch (error) {
-      setErrors({ general: 'Network error. Please check your connection and try again.' })
-    } finally {
-      setIsLoading(false)
     }
+  } catch (error) {
+    setErrors({ general: 'Network error. Please check your connection and try again.' })
+  } finally {
+    setIsLoading(false)
   }
+}
 
   // Don't render until mounted (prevents hydration mismatch)
   if (!mounted) {

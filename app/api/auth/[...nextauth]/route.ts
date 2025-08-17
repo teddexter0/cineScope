@@ -1,7 +1,11 @@
-// app/api/auth/[...nextauth]/route.ts - SIMPLIFIED WITHOUT PRISMA
+// app/api/auth/[...nextauth]/route.ts - FIXED TO USE DATABASE
 
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { PrismaClient } from "@prisma/client"
+import bcrypt from "bcryptjs"
+
+const prisma = new PrismaClient()
 
 const handler = NextAuth({
   providers: [
@@ -19,7 +23,26 @@ const handler = NextAuth({
         try {
           console.log('🔐 Attempting login for:', credentials.email)
 
-          // Demo credentials (always works)
+          // FIXED: Check database for real users first
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          })
+
+          if (user && user.password) {
+            // Verify password with bcrypt
+            const passwordMatch = await bcrypt.compare(credentials.password, user.password)
+            
+            if (passwordMatch) {
+              console.log('✅ Database user login successful:', user.email)
+              return {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+              }
+            }
+          }
+
+          // Fallback: Demo credentials (keep this for testing)
           if (credentials.email === "test@cinescope.com" && credentials.password === "password123") {
             console.log('✅ Demo user login successful')
             return {
@@ -29,7 +52,6 @@ const handler = NextAuth({
             }
           }
 
-          // For now, just demo mode. You can add real user logic later
           console.log('❌ Login failed for:', credentials.email)
           return null
 
