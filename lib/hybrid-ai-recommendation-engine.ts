@@ -1,4 +1,3 @@
-// lib/smart-ai-recommendation-engine.ts - COMPLETE REPLACEMENT FILE WITH HUGGING FACE
 
 /**
  * CineScope Hybrid AI System
@@ -794,6 +793,334 @@ Provide enhanced insights about their viewing psychology in 2-3 sentences.`
     
     return insight
   }
+// lib/enhanced-ai-recommendations.ts - ADD TV SHOWS & MORE DYNAMIC RECS
+
+// Add this method to your SmartAIRecommendationEngine class:
+
+// ENHANCED RECOMMENDATION ENGINE WITH TV SHOWS
+async generateEnhancedRecommendations(userProfile: any): Promise<any[]> {
+  try {
+    console.log('🎬 Generating ENHANCED AI recommendations with TV shows...')
+    
+    const allContent: any[] = []
+    const currentTime = Date.now()
+    const dynamicSeed = Math.floor(currentTime / (1000 * 60 * 5)) % 20 + 1 // Changes every 5 minutes!
+
+    // 1. MOVIES (existing logic)
+    const movieRecs = await this.generateMovieRecommendations(userProfile, dynamicSeed)
+    allContent.push(...movieRecs)
+
+    // 2. TV SHOWS (NEW!)
+    const tvRecs = await this.generateTVRecommendations(userProfile, dynamicSeed)
+    allContent.push(...tvRecs)
+
+    // 3. TRENDING MIXED CONTENT
+    const trendingMixed = await this.fetchTrendingMixed(dynamicSeed)
+    allContent.push(...trendingMixed)
+
+    // 4. PERSONALITY-BASED DISCOVERY
+    const personalityContent = await this.fetchPersonalityBasedContent(userProfile, dynamicSeed)
+    allContent.push(...personalityContent)
+
+    // Remove duplicates and score
+    const uniqueContent = this.removeDuplicates(allContent)
+    
+    const scoredContent = uniqueContent.map(item => ({
+      ...item,
+      aiScore: this.calculateEnhancedAIScore(item, userProfile),
+      contentType: item.media_type || (item.first_air_date ? 'tv' : 'movie'),
+      displayTitle: item.title || item.name || 'Unknown'
+    })).sort((a, b) => b.aiScore - a.aiScore)
+
+    console.log('🏆 Enhanced recommendations generated:', scoredContent.length, 'items')
+    return scoredContent.slice(0, 12)
+    
+  } catch (error) {
+    console.error('❌ Enhanced recommendation error:', error)
+    return await this.getFallbackRecommendations()
+  }
+}
+
+// MOVIE RECOMMENDATIONS (existing but improved)
+private async generateMovieRecommendations(userProfile: any, seed: number): Promise<any[]> {
+  const topGenres = Object.entries(userProfile.preferredGenres)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
+    .slice(0, 2)
+    .map(([genreId]) => genreId)
+
+  const movies: any[] = []
+  
+  for (const genreId of topGenres) {
+    const page = (seed % 5) + 1
+    const genreMovies = await this.fetchIntelligentMoviesByGenre(genreId, page, userProfile)
+    movies.push(...genreMovies)
+  }
+  
+  return movies
+}
+
+// TV SHOW RECOMMENDATIONS (NEW!)
+private async generateTVRecommendations(userProfile: any, seed: number): Promise<any[]> {
+  try {
+    const topGenres = Object.entries(userProfile.preferredGenres)
+      .sort(([,a], [,b]) => (b as number) - (a as number))
+      .slice(0, 2)
+      .map(([genreId]) => genreId)
+
+    const tvShows: any[] = []
+    
+    for (const genreId of topGenres) {
+      const page = (seed % 3) + 1
+      const shows = await this.fetchTVShowsByGenre(genreId, page, userProfile)
+      tvShows.push(...shows)
+    }
+
+    // Also get trending TV shows
+    const trendingTV = await this.fetchTrendingTVShows(seed)
+    tvShows.push(...trendingTV)
+    
+    return tvShows
+  } catch (error) {
+    console.error('Error fetching TV recommendations:', error)
+    return []
+  }
+}
+
+private async fetchTVShowsByGenre(genreId: string, page: number, userProfile: any): Promise<any[]> {
+  try {
+    const sortOptions = userProfile.complexityLevel > 0.6 
+      ? ['vote_average.desc', 'popularity.desc'] 
+      : ['popularity.desc', 'first_air_date.desc']
+    
+    const randomSort = sortOptions[page % sortOptions.length]
+    const minVotes = userProfile.complexityLevel > 0.7 ? 50 : 20
+    
+    const response = await fetch(
+      `https://api.themoviedb.org/3/discover/tv?api_key=${this.tmdbApiKey}&with_genres=${genreId}&sort_by=${randomSort}&vote_count.gte=${minVotes}&page=${page}&vote_average.gte=6.0`
+    )
+    const data = await response.json()
+    
+    // Mark as TV shows and add display properties
+    return (data.results || []).slice(0, 3).map((show: any) => ({
+      ...show,
+      media_type: 'tv',
+      title: show.name, // TV shows use 'name' not 'title'
+      release_date: show.first_air_date
+    }))
+  } catch (error) {
+    console.error(`Error fetching TV shows for genre ${genreId}:`, error)
+    return []
+  }
+}
+
+private async fetchTrendingTVShows(seed: number): Promise<any[]> {
+  try {
+    const timeWindow = seed % 2 === 0 ? 'day' : 'week'
+    const response = await fetch(
+      `https://api.themoviedb.org/3/trending/tv/${timeWindow}?api_key=${this.tmdbApiKey}&page=${seed % 3 + 1}`
+    )
+    const data = await response.json()
+    
+    return (data.results || []).slice(0, 2).map((show: any) => ({
+      ...show,
+      media_type: 'tv',
+      title: show.name,
+      release_date: show.first_air_date
+    }))
+  } catch (error) {
+    console.error('Error fetching trending TV shows:', error)
+    return []
+  }
+}
+
+// TRENDING MIXED CONTENT (Movies + TV)
+private async fetchTrendingMixed(seed: number): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `https://api.themoviedb.org/3/trending/all/week?api_key=${this.tmdbApiKey}&page=${seed % 2 + 1}`
+    )
+    const data = await response.json()
+    
+    return (data.results || []).slice(0, 3).map((item: any) => ({
+      ...item,
+      title: item.title || item.name,
+      release_date: item.release_date || item.first_air_date
+    }))
+  } catch (error) {
+    console.error('Error fetching trending mixed content:', error)
+    return []
+  }
+}
+
+// PERSONALITY-BASED CONTENT DISCOVERY
+private async fetchPersonalityBasedContent(userProfile: any, seed: number): Promise<any[]> {
+  try {
+    const searches = this.getPersonalitySearchTerms(userProfile.personalityType)
+    const allResults: any[] = []
+    
+    for (const searchTerm of searches) {
+      try {
+        // Search both movies and TV
+        const [movieResponse, tvResponse] = await Promise.all([
+          fetch(`https://api.themoviedb.org/3/search/movie?api_key=${this.tmdbApiKey}&query=${encodeURIComponent(searchTerm)}&page=1`),
+          fetch(`https://api.themoviedb.org/3/search/tv?api_key=${this.tmdbApiKey}&query=${encodeURIComponent(searchTerm)}&page=1`)
+        ])
+        
+        const [movieData, tvData] = await Promise.all([
+          movieResponse.json(),
+          tvResponse.json()
+        ])
+        
+        // Add movies
+        if (movieData.results) {
+          allResults.push(...movieData.results.slice(0, 2))
+        }
+        
+        // Add TV shows
+        if (tvData.results) {
+          allResults.push(...tvData.results.slice(0, 2).map((show: any) => ({
+            ...show,
+            media_type: 'tv',
+            title: show.name,
+            release_date: show.first_air_date
+          })))
+        }
+      } catch (searchError) {
+        console.error(`Error searching for ${searchTerm}:`, searchError)
+      }
+    }
+    
+    return allResults.slice(0, 4)
+  } catch (error) {
+    console.error('Error fetching personality-based content:', error)
+    return []
+  }
+}
+
+private getPersonalitySearchTerms(personalityType: string): string[] {
+  const searchTerms = {
+    'Intellectual Explorer': ['psychological thriller', 'mind bending', 'complex plot', 'cerebral'],
+    'Emotional Connector': ['emotional drama', 'character study', 'human story', 'heartfelt'],
+    'Entertainment Seeker': ['blockbuster', 'popular series', 'crowd pleaser', 'mainstream'],
+    'Escapist Explorer': ['fantasy series', 'adventure', 'sci-fi epic', 'magical world'],
+    'Critical Analyst': ['critically acclaimed', 'award winning', 'prestige television', 'auteur'],
+    'Nostalgic Dreamer': ['classic television', 'period drama', 'vintage', 'nostalgic']
+  }
+  
+  return searchTerms[personalityType as keyof typeof searchTerms] || ['highly rated', 'popular']
+}
+
+// ENHANCED AI SCORING (handles both movies and TV)
+private calculateEnhancedAIScore(item: any, userProfile: any): number {
+  let score = (item.vote_average || 0) * 10
+
+  // Content type bonus
+  if (item.media_type === 'tv') {
+    score += 5 // Slight bonus for TV variety
+  }
+
+  // Genre matching
+  if (item.genre_ids) {
+    item.genre_ids.forEach((genreId: number) => {
+      const weight = userProfile.preferredGenres[genreId.toString()]
+      if (weight) {
+        score += weight * 50
+      }
+    })
+  }
+
+  // Personality bonuses (same as before but works for TV too)
+  const personalityBonuses = {
+    'Intellectual Explorer': item.vote_average > 7.5 ? 30 : 0,
+    'Entertainment Seeker': item.popularity > 100 ? 25 : 0,
+    'Emotional Connector': item.genre_ids?.includes(18) ? 35 : 0,
+    'Escapist Explorer': item.genre_ids?.includes(14) || item.genre_ids?.includes(878) ? 30 : 0,
+    'Critical Analyst': item.vote_count > 500 && item.vote_average > 7.0 ? 25 : 0,
+    'Nostalgic Dreamer': this.isClassicContent(item) ? 20 : 0
+  }
+
+  score += personalityBonuses[userProfile.personalityType] || 0
+
+  // Recency and popularity factors
+  const releaseYear = new Date(item.release_date || item.first_air_date || '2020').getFullYear()
+  const currentYear = new Date().getFullYear()
+  const yearDiff = currentYear - releaseYear
+
+  // TV shows get different scoring for recency
+  if (item.media_type === 'tv') {
+    // Recent TV shows (last 5 years) get bonus
+    if (yearDiff <= 5) score += 10
+    // Long-running shows (many seasons) get bonus for quality
+    if (item.number_of_seasons > 3) score += 8
+  } else {
+    // Movies use existing logic
+    if (yearDiff >= 2 && yearDiff <= 15) score += 15
+  }
+
+  // Popularity bonus
+  if (item.popularity > 50) score += 10
+
+  return Math.round(score)
+}
+
+private isClassicContent(item: any): boolean {
+  const releaseYear = new Date(item.release_date || item.first_air_date || '2020').getFullYear()
+  return releaseYear < 2010
+}
+
+// DYNAMIC REFRESH FUNCTIONALITY
+async refreshRecommendations(userProfile: any, forceRefresh: boolean = false): Promise<any[]> {
+  console.log('🔄 Refreshing AI recommendations...')
+  
+  if (forceRefresh) {
+    // Clear any cached recommendations
+    this.clearRecommendationCache?.()
+    
+    // Get completely fresh recommendations with new seed
+    const freshSeed = Date.now() % 100 + 1
+    return await this.generateEnhancedRecommendationsWithSeed(userProfile, freshSeed)
+  }
+  
+  return await this.generateEnhancedRecommendations(userProfile)
+}
+
+private async generateEnhancedRecommendationsWithSeed(userProfile: any, seed: number): Promise<any[]> {
+  try {
+    console.log('🎲 Using fresh seed for recommendations:', seed)
+    
+    const allContent: any[] = []
+
+    // Use the seed to get different pages and sorts
+    const movieRecs = await this.generateMovieRecommendations(userProfile, seed)
+    const tvRecs = await this.generateTVRecommendations(userProfile, seed)
+    const trendingMixed = await this.fetchTrendingMixed(seed)
+    const personalityContent = await this.fetchPersonalityBasedContent(userProfile, seed)
+
+    allContent.push(...movieRecs, ...tvRecs, ...trendingMixed, ...personalityContent)
+
+    const uniqueContent = this.removeDuplicates(allContent)
+    
+    const scoredContent = uniqueContent.map(item => ({
+      ...item,
+      aiScore: this.calculateEnhancedAIScore(item, userProfile) + Math.random() * 10, // Add randomness
+      contentType: item.media_type || (item.first_air_date ? 'tv' : 'movie'),
+      displayTitle: item.title || item.name || 'Unknown'
+    })).sort((a, b) => b.aiScore - a.aiScore)
+
+    return scoredContent.slice(0, 12)
+  } catch (error) {
+    console.error('❌ Fresh recommendations error:', error)
+    return await this.getFallbackRecommendations()
+  }
+}
+
+// Cache management (optional)
+private recommendationCache = new Map<string, { data: any[], timestamp: number }>()
+
+private clearRecommendationCache() {
+  this.recommendationCache.clear()
+  console.log('🗑️ Recommendation cache cleared')
+}
 }
 export const smartAIEngine = new SmartAIRecommendationEngine()
 export const hybridAIEngine = smartAIEngine // Alias
