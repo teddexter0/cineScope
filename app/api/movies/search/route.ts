@@ -1,7 +1,7 @@
 // app/api/movies/search/route.ts - IMPROVED SEARCH (Movies only for watchlist)
 import { NextRequest, NextResponse } from 'next/server'
 
-const TMDB_API_KEY = 'da4d264a4290972d086e0d21dce7cfeb'
+const TMDB_API_KEY = process.env.TMDB_API_KEY!
 
 export async function GET(request: NextRequest) {
   try {

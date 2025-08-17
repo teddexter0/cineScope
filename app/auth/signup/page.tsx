@@ -143,16 +143,15 @@ export default function SignUpPage() {
   if (success) {
     return (
       <div className="min-h-screen relative overflow-hidden">
-        {/* YouTube Trailers Background */}
-        <div className="fixed inset-0 z-0">
-          <YouTubeTrailerBackground 
-            autoplay={true}
-            muted={true}
-            showControls={false}
-            loop={true}
-            className="w-full h-full"
-          />
-        </div>
+        {/* YouTube Trailers Background - AUTH TRAILERS */}
+        <YouTubeTrailerBackground 
+          autoplay={true}
+          muted={true}
+          showControls={false}
+          loop={true}
+          isDashboard={false} // Use AUTH_TRAILERS
+          className="w-full h-full"
+        />
         
         {/* Content Overlay */}
         <div className="relative z-10 min-h-screen bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4">
@@ -182,16 +181,15 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* 🎬 YOUTUBE TRAILERS BACKGROUND */}
-      <div className="fixed inset-0 z-0">
-        <YouTubeTrailerBackground 
-          autoplay={true}
-          muted={true}
-          showControls={false}
-          loop={true}
-          className="w-full h-full"
-        />
-      </div>
+      {/* 🎬 YOUTUBE TRAILERS BACKGROUND - AUTH TRAILERS */}
+      <YouTubeTrailerBackground 
+        autoplay={true}
+        muted={true}
+        showControls={false}
+        loop={true}
+        isDashboard={false} // Use AUTH_TRAILERS (Spider-Man, Endgame, etc.)
+        className="w-full h-full"
+      />
 
       {/* MAIN CONTENT OVERLAY */}
       <div className="relative z-10 min-h-screen bg-black/40 backdrop-blur-[2px] p-4 flex items-center justify-center">

@@ -1,4 +1,4 @@
-// app/dashboard/page.tsx - COMPLETE FINAL VERSION
+// app/dashboard/page.tsx - COMPLETE FIXED VERSION
 
 'use client'
 
@@ -26,6 +26,7 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
 import { hybridAIEngine } from '@/lib/hybrid-ai-recommendation-engine'
+import { persistentStorage } from '@/lib/persistent-storage'
 
 // Debounce helper function
 function debounce(func: Function, wait: number) {
@@ -80,7 +81,7 @@ export default function Dashboard() {
     }
   }, [status, router])
 
-  // ENHANCED AI RECOMMENDATION LOADING
+  // ENHANCED AI RECOMMENDATION LOADING - FIXED ASYNC/AWAIT
   const loadAIPersonalizedRecommendations = async () => {
     setIsLoadingRecommendations(true)
     
@@ -96,8 +97,8 @@ export default function Dashboard() {
       const responses = JSON.parse(onboardingAnswers)
       console.log('📝 User responses:', responses)
 
-      // AI Analysis with hybrid engine
-      const profile = hybridAIEngine.analyzePersonality(responses)
+      // AI Analysis with hybrid engine - FIXED: properly await the Promise
+      const profile = await hybridAIEngine.analyzePersonality(responses)
       setUserProfile(profile)
       setAiInsight(profile.aiInsight)
 
@@ -116,7 +117,8 @@ export default function Dashboard() {
         setRecommendationStats(prev => ({
           ...prev,
           discovered: uniqueResults.length,
-          accuracy: Math.min(99, 88 + Object.keys(await profile.preferredGenres).length * 2)
+          // FIXED: properly access preferredGenres from awaited profile
+          accuracy: Math.min(99, 88 + Object.keys(profile.preferredGenres || {}).length * 2)
         }))
         console.log('✅ ENHANCED AI recommendations loaded!', uniqueResults.length, 'movies & TV shows')
       } else {
@@ -144,7 +146,7 @@ export default function Dashboard() {
     }
   }
 
-  // WORKING REFRESH AI BUTTON
+  // WORKING REFRESH AI BUTTON - FIXED ASYNC/AWAIT
   const handleRefreshAI = async () => {
     setIsLoadingRecommendations(true)
     
@@ -158,6 +160,7 @@ export default function Dashboard() {
       }
 
       const responses = JSON.parse(onboardingAnswers)
+      // FIXED: properly await the analyzePersonality call
       const profile = await hybridAIEngine.analyzePersonality(responses)
       
       // Use the NEW refresh method with force refresh
@@ -216,28 +219,16 @@ export default function Dashboard() {
     []
   )
 
-  // WATCHLIST FUNCTIONALITY
+  // WATCHLIST FUNCTIONALITY - USING PERSISTENT STORAGE
   const handleAddToWatchlist = async (movie: any) => {
     try {
+      const userEmail = session?.user?.email || 'demo@user.com'
       console.log('🎬 Adding to watchlist:', movie.title || movie.name || 'Unknown Movie')
       
-      const response = await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          movieId: movie.id,
-          title: movie.title || movie.name || movie.displayTitle || 'Unknown Movie',
-          poster_path: movie.poster_path,
-          vote_average: movie.vote_average,
-          release_date: movie.release_date || movie.first_air_date,
-          overview: movie.overview || 'No description available'
-        })
-      })
-
-      const data = await response.json()
-      console.log('📋 Watchlist response:', data)
+      // Use persistent storage for immediate response
+      const success = persistentStorage.addToWatchlist(userEmail, movie)
       
-      if (response.ok && data.success) {
+      if (success) {
         showNotification(`✅ ${movie.title || movie.name || 'Movie'} added to watchlist!`, 'success')
         
         // Update the button state visually
@@ -247,42 +238,54 @@ export default function Dashboard() {
           button.classList.add('bg-green-500', 'hover:bg-green-600')
           button.classList.remove('bg-blue-600', 'hover:bg-blue-700')
         }
-      } else {
-        if (data.error === 'Movie already in watchlist') {
-          showNotification(`📋 ${movie.title || movie.name || 'Movie'} is already in your watchlist`, 'error')
-        } else {
-          showNotification(`❌ Failed to add ${movie.title || movie.name || 'movie'}: ${data.error || 'Unknown error'}`, 'error')
+        
+        // Optional: Sync to server in background
+        try {
+          await fetch('/api/watchlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              movieId: movie.id,
+              title: movie.title || movie.name || movie.displayTitle || 'Unknown Movie',
+              poster_path: movie.poster_path,
+              vote_average: movie.vote_average,
+              release_date: movie.release_date || movie.first_air_date,
+              overview: movie.overview || 'No description available'
+            })
+          })
+        } catch (apiError) {
+          console.log('📡 Background sync failed (not critical):', apiError)
         }
+      } else {
+        showNotification(`📋 ${movie.title || movie.name || 'Movie'} is already in your watchlist`, 'error')
       }
     } catch (error) {
       console.error('❌ Watchlist error:', error)
-      showNotification(`❌ Network error adding ${movie.title || movie.name || 'movie'}. Please try again.`, 'error')
+      showNotification(`❌ Error adding ${movie.title || movie.name || 'movie'}. Please try again.`, 'error')
     }
   }
 
-  // RATING FUNCTIONALITY
+  // RATING FUNCTIONALITY - USING PERSISTENT STORAGE
   const handleLikeMovie = async (movie: any) => {
     try {
+      const userEmail = session?.user?.email || 'demo@user.com'
       console.log('👍 Liking movie:', movie.title || movie.name || movie.displayTitle || 'Unknown Movie')
       
-      const response = await fetch('/api/movies/rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          movieId: movie.id,
-          title: movie.title || movie.name || movie.displayTitle || 'Unknown Movie',
-          poster_path: movie.poster_path,
-          vote_average: movie.vote_average,
-          release_date: movie.release_date || movie.first_air_date,
-          rating: 8.5,
-          review: `Loved this AI recommendation! 🤖 ${movie.title || movie.name || movie.displayTitle || 'This content'} was exactly what I was looking for.`
-        })
-      })
-
-      const data = await response.json()
-      console.log('⭐ Rating response:', data)
+      const ratingData = {
+        movieId: movie.id,
+        title: movie.title || movie.name || movie.displayTitle || 'Unknown Movie',
+        poster_path: movie.poster_path,
+        vote_average: movie.vote_average,
+        release_date: movie.release_date || movie.first_air_date,
+        rating: 8.5,
+        review: `Loved this AI recommendation! 🤖 ${movie.title || movie.name || movie.displayTitle || 'This content'} was exactly what I was looking for.`,
+        media_type: movie.media_type || 'movie'
+      }
       
-      if (response.ok && data.success) {
+      // Use persistent storage for immediate response
+      const success = persistentStorage.addRating(userEmail, ratingData)
+      
+      if (success) {
         showNotification(`💖 Loved ${movie.title || movie.name || movie.displayTitle || 'this content'}! Check your ratings page to see it.`, 'success')
         
         // Update accuracy when user likes recommendations
@@ -298,8 +301,17 @@ export default function Dashboard() {
           button.classList.add('bg-pink-500', 'hover:bg-pink-600')
           button.classList.remove('bg-gradient-to-r', 'from-yellow-400', 'to-orange-500')
         }
-      } else {
-        showNotification(`❌ Failed to like ${movie.title || movie.name || movie.displayTitle || 'content'}: ${data.error || 'Unknown error'}`, 'error')
+        
+        // Optional: Sync to server in background
+        try {
+          await fetch('/api/movies/rate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ratingData)
+          })
+        } catch (apiError) {
+          console.log('📡 Background rating sync failed (not critical):', apiError)
+        }
       }
     } catch (error) {
       console.error('❌ Like error:', error)
@@ -594,18 +606,21 @@ export default function Dashboard() {
                               )}
                             </div>
 
-                            {/* Action Button */}
+                            {/* Action Button - FIXED: Show correct button based on search type */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                if (result.media_type === 'movie' || result.media_type === 'tv' || !result.media_type) {
+                                if (result.media_type === 'person') {
+                                  // For people, add to favorites (will need to implement)
+                                  showNotification(`👤 ${result.name} - Person search! Use the People page to add to favorites.`, 'error')
+                                } else if (result.media_type === 'movie' || result.media_type === 'tv' || !result.media_type) {
                                   handleAddToWatchlist(result)
                                 }
                               }}
                               className="bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 p-2 rounded-lg transition-colors"
-                              title="Add to watchlist"
+                              title={result.media_type === 'person' ? 'Go to People page to add' : 'Add to watchlist'}
                             >
-                              <Plus className="w-4 h-4" />
+                              {result.media_type === 'person' ? '👤' : <Plus className="w-4 h-4" />}
                             </button>
                           </div>
                         ))}
@@ -767,11 +782,10 @@ export default function Dashboard() {
                       </div>
                       
                       <div className="p-3">
-                     // Update your movie card display:
-<h3 className="text-white font-medium text-sm mb-1 line-clamp-2">
-  {movie.displayTitle || movie.title || movie.name}
-  {movie.media_type === 'tv' && <span className="text-xs text-blue-300 ml-1">(Series)</span>}
-</h3>
+                        <h3 className="text-white font-medium text-sm mb-1 line-clamp-2">
+                          {movie.displayTitle || movie.title || movie.name}
+                          {movie.media_type === 'tv' && <span className="text-xs text-blue-300 ml-1">(Series)</span>}
+                        </h3>
                         
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex items-center gap-1">
@@ -783,23 +797,22 @@ export default function Dashboard() {
                           </span>
                         </div>
 
- 
-<div className="flex gap-1 md:gap-2" data-movie-id={movie.id}>
-  <button 
-    onClick={() => handleLikeMovie(movie)}
-    className="like-btn flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-blue-900 py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
-    title="Love this AI pick!"
-  >
-    🤖👍
-  </button>
-  <button 
-    onClick={() => handleAddToWatchlist(movie)}
-    className="watchlist-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
-    title="Add to watchlist"
-  >
-    ➕
-  </button>
-</div>
+                        <div className="flex gap-1 md:gap-2" data-movie-id={movie.id}>
+                          <button 
+                            onClick={() => handleLikeMovie(movie)}
+                            className="like-btn flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-blue-900 py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
+                            title="Love this AI pick!"
+                          >
+                            🤖👍
+                          </button>
+                          <button 
+                            onClick={() => handleAddToWatchlist(movie)}
+                            className="watchlist-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
+                            title="Add to watchlist"
+                          >
+                            ➕
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>

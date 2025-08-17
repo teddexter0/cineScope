@@ -1,4 +1,4 @@
-// REPLACE your entire app/watchlist/page.tsx with this:
+// app/watchlist/page.tsx - FIXED WITH PERSISTENT STORAGE
 
 'use client'
 
@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { Star, Trash2, Play } from 'lucide-react'
+import { Star, Trash2, Play, ArrowLeft } from 'lucide-react'
+import { persistentStorage } from '@/lib/persistent-storage'
 
 export default function WatchlistPage() {
   const { data: session, status } = useSession()
@@ -28,17 +29,41 @@ export default function WatchlistPage() {
 
   const loadWatchlist = async () => {
     try {
-      const response = await fetch('/api/watchlist')
-      const data = await response.json()
+      const userEmail = session?.user?.email || 'demo@user.com'
       
-      console.log('📋 Watchlist API response:', data) // Debug log
+      // Load from persistent storage
+      const storedWatchlist = persistentStorage.getWatchlist(userEmail)
+      setWatchlist(storedWatchlist)
       
-      if (data.success) {
-        setWatchlist(data.watchlist || [])
-        console.log('📋 Loaded watchlist:', data.watchlist?.length || 0, 'items')
-      } else {
-        console.error('❌ Watchlist load failed:', data.error)
+      console.log('📋 Loaded watchlist from persistent storage:', storedWatchlist.length, 'items')
+      
+      // Optional: Try to sync with server
+      try {
+        const response = await fetch('/api/watchlist')
+        const data = await response.json()
+        
+        if (data.success && data.watchlist?.length > 0) {
+          // If server has data, merge it with local storage
+          const serverWatchlist = data.watchlist
+          const mergedWatchlist = [...storedWatchlist]
+          
+          serverWatchlist.forEach((serverItem: any) => {
+            const exists = mergedWatchlist.find(local => local.movieId === serverItem.movieId)
+            if (!exists) {
+              mergedWatchlist.push(serverItem)
+            }
+          })
+          
+          if (mergedWatchlist.length > storedWatchlist.length) {
+            persistentStorage.setWatchlist(userEmail, mergedWatchlist)
+            setWatchlist(mergedWatchlist)
+            console.log('📥 Merged server data with local storage')
+          }
+        }
+      } catch (apiError) {
+        console.log('📡 Server sync failed, using local storage only:', apiError)
       }
+      
     } catch (error) {
       console.error('❌ Error loading watchlist:', error)
     } finally {
@@ -48,13 +73,24 @@ export default function WatchlistPage() {
 
   const removeFromWatchlist = async (movieId: string) => {
     try {
-      const response = await fetch(`/api/watchlist?movieId=${movieId}`, {
-        method: 'DELETE'
-      })
+      const userEmail = session?.user?.email || 'demo@user.com'
       
-      if (response.ok) {
+      // Remove from persistent storage immediately
+      const success = persistentStorage.removeFromWatchlist(userEmail, movieId)
+      
+      if (success) {
+        // Update UI immediately
         setWatchlist(prev => prev.filter(item => item.movieId !== movieId))
         console.log('🗑️ Removed from watchlist:', movieId)
+        
+        // Optional: Sync to server in background
+        try {
+          await fetch(`/api/watchlist?movieId=${movieId}`, {
+            method: 'DELETE'
+          })
+        } catch (apiError) {
+          console.log('📡 Background delete sync failed (not critical):', apiError)
+        }
       }
     } catch (error) {
       console.error('Error removing from watchlist:', error)
@@ -93,9 +129,10 @@ export default function WatchlistPage() {
           <div className="flex items-center gap-4 mb-6">
             <button 
               onClick={() => router.push('/dashboard')}
-              className="text-white hover:text-purple-300 transition-colors"
+              className="flex items-center gap-2 text-white hover:text-purple-300 transition-colors"
             >
-              ← Back to Dashboard
+              <ArrowLeft className="w-5 h-5" />
+              Back to Dashboard
             </button>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">📋 My Watchlist</h1>
@@ -137,6 +174,15 @@ export default function WatchlistPage() {
                       className="object-cover group-hover:scale-110 transition-transform duration-300"
                       sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 16vw"
                     />
+                    
+                    {/* Content Type Badge */}
+                    {movie.media_type && (
+                      <div className="absolute top-2 left-2 bg-blue-500/80 backdrop-blur-sm px-2 py-1 rounded-full">
+                        <span className="text-white text-xs font-bold">
+                          {movie.media_type === 'tv' ? '📺 Series' : '🎬 Movie'}
+                        </span>
+                      </div>
+                    )}
                     
                     {/* Hover Overlay */}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -194,7 +240,7 @@ export default function WatchlistPage() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-300">
-                  {(watchlist.reduce((sum, movie) => sum + (movie.vote_average || 0), 0) / watchlist.length).toFixed(1)}
+                  {watchlist.length > 0 ? (watchlist.reduce((sum, movie) => sum + (movie.vote_average || 0), 0) / watchlist.length).toFixed(1) : '0.0'}
                 </div>
                 <div className="text-white/60 text-sm">Avg Rating</div>
               </div>
@@ -206,9 +252,9 @@ export default function WatchlistPage() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-300">
-                  {new Set(watchlist.map(m => new Date(m.release_date).getFullYear())).size}
+                  {watchlist.filter(m => m.media_type === 'tv').length}
                 </div>
-                <div className="text-white/60 text-sm">Different Years</div>
+                <div className="text-white/60 text-sm">TV Series</div>
               </div>
             </div>
           </div>

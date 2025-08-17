@@ -1,72 +1,203 @@
 # 🎬 CineScope
 
-<div align="center">
+**Your AI-Powered Movie Companion**
 
-**Your AI-Powered Movie Companion**  
-*Never wonder what to watch again. CineScope learns your taste and delivers movie recommendations so perfect, it feels like magic.*  
+> Never wonder what to watch again. CineScope uses advanced AI to understand your unique taste and delivers movie recommendations so perfect, you'll feel like we're reading your mind.
 
-[![Demo](https://img.shields.io/badge/🌟-Live_Demo-success?style=for-the-badge)](https://cinescope-demo.vercel.app)  
-[![License](https://img.shields.io/badge/📄-MIT_License-blue?style=for-the-badge)](LICENSE)  
-[![Next.js](https://img.shields.io/badge/⚡-Next.js_14-black?style=for-the-badge)](https://nextjs.org/)  
-[![TypeScript](https://img.shields.io/badge/🔷-TypeScript_5.0-blue?style=for-the-badge)](https://www.typescriptlang.org/)  
+[![Demo](https://img.shields.io/badge/Demo-Live-green)](https://cinescope-demo.vercel.app)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 
-<img src="https://via.placeholder.com/800x400/1a1a2e/ffffff?text=🎬+CineScope+AI+Movie+Companion" alt="CineScope Hero" />
+## ✨ Features
+
+### 🧠 **AI Personality Analysis**
+- Deep psychological profiling from your movie preferences
+- Understands what you *really* love, not just what you rate highly
+- Adapts to your mood and viewing context
+
+### 🎯 **Context-Aware Recommendations**
+- Different suggestions for date night vs solo viewing
+- Time-based recommendations (morning energy vs late-night atmosphere)
+- Mood-sensitive picks based on your current state
+
+### ⏰ **Smart Timing Notifications**
+- Learns your optimal viewing times
+- Sends personalized recommendations at perfect moments
+- Respects your schedule and preferences
+
+### 👥 **Social Discovery**
+- Import your IMDB watchlist seamlessly
+- Find users with similar taste
+- Safe, moderated community reviews
+- Friend recommendations based on compatibility scores
+
+### 🛡️ **Safety & Privacy First**
+- Content moderation and spoiler protection
+- Rate limiting and spam prevention
+- Privacy-focused design with optional social features
+
+## 🚀 Tech Stack
+
+### **Frontend**
+- **Next.js 14** - React framework with App Router
+- **TypeScript** - Type safety and better developer experience
+- **Tailwind CSS** - Utility-first styling
+- **Framer Motion** - Smooth animations and interactions
+
+### **Backend**
+- **Next.js API Routes** - Serverless functions
+- **Prisma** - Type-safe database ORM
+- **PostgreSQL** - Robust relational database
+- **NextAuth.js** - Authentication and session management
+
+### **AI & Data**
+- **TMDB API** - Movie data and posters
+- **OpenAI API** - Personality analysis and recommendations
+- **Custom ML Models** - Collaborative filtering and taste matching
+
+### **Infrastructure**
+- **Vercel** - Deployment and hosting
+- **Supabase** - Database hosting
+- **Firebase** - Push notifications (planned)
+
+## 🛠️ Getting Started
+
+### Prerequisites
+- Node.js 18+ 
+- PostgreSQL database
+- TMDB API key
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/teddexter0/cineScope.git
+   cd cinescope
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Fill in your `.env.local`:
+   ```env
+   DATABASE_URL="your-database-url"
+   NEXTAUTH_SECRET="your-secret-key"
+   TMDB_API_KEY="your-tmdb-api-key"
+   ```
+
+4. **Set up the database**
+   ```bash
+   npx prisma db push
+   npx prisma generate
+   ```
+
+5. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open [http://localhost:3000](http://localhost:3000)**
+
+## 📝 Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL connection string | ✅ |
+| `NEXTAUTH_SECRET` | Secret for JWT signing | ✅ |
+| `NEXTAUTH_URL` | Your app's URL | ✅ |
+| `TMDB_API_KEY` | The Movie Database API key | ✅ |
+| `OPENAI_API_KEY` | OpenAI API for AI features | ⚠️ Optional |
+| `GOOGLE_AI_KEY` | Google AI for content moderation | ⚠️ Optional |
+
+### Getting API Keys
+
+- **TMDB API**: [Get free key here](https://www.themoviedb.org/settings/api)
+- **OpenAI API**: [Get key here](https://platform.openai.com/api-keys)
+
+## 🏗️ Project Structure
+
+```
+cinescope/
+├── app/                    # Next.js App Router
+│   ├── (auth)/            # Authentication pages
+│   ├── api/               # API routes
+│   ├── dashboard/         # Main app pages
+│   └── onboarding/        # User onboarding flow
+├── lib/                   # Utility functions
+│   ├── ai-services.ts     # AI recommendation engine
+│   ├── movie-service.ts   # TMDB integration
+│   └── notification-service.ts # Smart notifications
+├── prisma/                # Database schema
+└── public/                # Static assets
+```
+
+## 🎯 Roadmap
+
+### Phase 1: Core Features ✅
+- [x] User authentication
+- [x] Movie search and display
+- [x] Basic recommendations
+- [x] Personality analysis onboarding
+
+### Phase 2: Smart Features 🚧
+- [x] AI-powered recommendations
+- [x] Smart timing notifications
+- [ ] IMDB watchlist import
+- [ ] Social features
+
+### Phase 3: Advanced Features 📋
+- [ ] Mobile push notifications
+- [ ] Real-time watch parties
+- [ ] Advanced analytics dashboard
+- [ ] API for third-party integrations
+
+### Phase 4: Scale & Polish 🔮
+- [ ] Mobile app (React Native)
+- [ ] Chrome extension
+- [ ] Premium features
+- [ ] Enterprise partnerships
+
+## 🤝 Contributing
+
+We love contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Process
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **TMDB** for providing comprehensive movie data
+- **OpenAI** for powering our AI recommendations
+- **Vercel** for seamless deployment
+- **The open source community** for amazing tools and libraries
+
+## 📬 Contact
+
+**Ted Dexter Sande** - [@teddexter0](https://github.com/teddexter0) - teddexter0@gmail.com
+
+Project Link: [https://github.com/teddexter0/cineScope](https://github.com/teddexter0/cineScope)
+
+---
+ 
+
+**Built with ⚡ and lots of ☕**
+
+*CineScope - Because life's too short for bad movies*
 
 </div>
-
----
-
-## 🌟 What Makes CineScope Special  
-
-CineScope isn’t just another movie app — it’s a **personal AI-powered companion** that learns your taste, mood, and habits to recommend movies you’ll truly love.  
-
-### 🎥 Cinematic Experience  
-- Epic movie trailers as live backgrounds  
-- Automatic trailer rotation for freshness  
-- Interactive overlays & controls  
-
-### 🧠 AI Personality Engine  
-- Custom-built AI (no external APIs)  
-- Psychological profiling & mood analysis  
-- 6 unique personality types (Explorer, Connector, Analyst, Dreamer, etc.)  
-
-### 🎯 Smart Recommendations  
-- Mood-sensitive picks  
-- Complexity-matched suggestions  
-- Fresh & varied discovery  
-
----
-
-## ✨ Core Features  
-
-- 🔮 **AI Discovery**: Personality quiz, evolving taste learning  
-- 🎬 **Cinematic Search**: Instant search, watchlist, reviews  
-- 👥 **Social (Coming Soon)**: Taste matching, friend recs, safe community reviews  
-- 🛡️ **Privacy First**: No external AI, spoiler protection, secure data  
-
----
-
-## 🚀 Tech Stack  
-
-**Frontend**  
-- Next.js 14 · TypeScript 5 · Tailwind CSS · Framer Motion  
-
-**Backend**  
-- PostgreSQL · Prisma · NextAuth.js  
-
-**AI & Data**  
-- Custom AI Engine · TMDB API  
-
----
-
-## 🛠️ Getting Started  
-
-### 📋 Prerequisites  
-- Node.js 18+  
-- PostgreSQL database  
-
-### ⚡ Installation  
-```bash
-git clone https://github.com/teddexter0/cinescope.git
-cd cinescope
-npm install

@@ -1,4 +1,4 @@
-// app/ratings/page.tsx - FIXED VERSION
+// app/ratings/page.tsx - FIXED WITH PERSISTENT STORAGE
 
 'use client'
 
@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { Star, Heart, Calendar, ArrowLeft, Film } from 'lucide-react'
+import { persistentStorage } from '@/lib/persistent-storage'
 
 export default function RatingsPage() {
   const { data: session, status } = useSession()
@@ -28,22 +29,43 @@ export default function RatingsPage() {
 
   const loadRatings = async () => {
     try {
-      console.log('⭐ Loading ratings...')
-      const response = await fetch('/api/movies/rate')
-      const data = await response.json()
+      const userEmail = session?.user?.email || 'demo@user.com'
       
-      console.log('⭐ Ratings API response:', data)
+      // Load from persistent storage
+      const storedRatings = persistentStorage.getRatings(userEmail)
+      setRatings(storedRatings)
       
-      if (data.success && data.ratings) {
-        setRatings(data.ratings)
-        console.log('⭐ Loaded ratings:', data.ratings.length, 'items')
-      } else {
-        console.log('⭐ No ratings found or API error')
-        setRatings([])
+      console.log('⭐ Loaded ratings from persistent storage:', storedRatings.length, 'items')
+      
+      // Optional: Try to sync with server
+      try {
+        const response = await fetch('/api/movies/rate')
+        const data = await response.json()
+        
+        if (data.success && data.ratings?.length > 0) {
+          // If server has data, merge it with local storage
+          const serverRatings = data.ratings
+          const mergedRatings = [...storedRatings]
+          
+          serverRatings.forEach((serverItem: any) => {
+            const exists = mergedRatings.find(local => local.movieId === serverItem.movieId)
+            if (!exists) {
+              mergedRatings.push(serverItem)
+            }
+          })
+          
+          if (mergedRatings.length > storedRatings.length) {
+            persistentStorage.setRatings(userEmail, mergedRatings)
+            setRatings(mergedRatings)
+            console.log('📥 Merged server ratings with local storage')
+          }
+        }
+      } catch (apiError) {
+        console.log('📡 Server sync failed, using local storage only:', apiError)
       }
+      
     } catch (error) {
       console.error('❌ Error loading ratings:', error)
-      setRatings([])
     } finally {
       setIsLoading(false)
     }
@@ -145,6 +167,7 @@ export default function RatingsPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">
                       {rating.title || 'Unknown Movie'}
+                      {rating.media_type === 'tv' && <span className="text-xs text-blue-300 ml-1">(Series)</span>}
                     </h3>
                     
                     {/* Rating Display */}
@@ -225,9 +248,9 @@ export default function RatingsPage() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-300">
-                  {ratings.filter(r => r.review && r.review.length > 10).length}
+                  {ratings.filter(r => r.media_type === 'tv').length}
                 </div>
-                <div className="text-white/60 text-sm">Reviewed</div>
+                <div className="text-white/60 text-sm">TV Series</div>
               </div>
             </div>
           </div>

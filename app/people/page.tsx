@@ -1,4 +1,4 @@
-// app/people/page.tsx - FAVORITE PEOPLE PAGE
+// app/people/page.tsx - FIXED SEARCH & ADD TO FAVORITES
 
 'use client'
 
@@ -18,9 +18,20 @@ import {
   Plus,
   Trash2
 } from 'lucide-react'
+import { persistentStorage } from '@/lib/persistent-storage'
 
-// In-memory storage for favorite people
-const sessionFavoritePeople = new Map<string, any[]>()
+// Debounce helper function
+function debounce(func: Function, wait: number) {
+  let timeout: NodeJS.Timeout
+  return function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
 
 export default function FavoritePeoplePage() {
   const { data: session, status } = useSession()
@@ -46,9 +57,13 @@ export default function FavoritePeoplePage() {
   const loadFavoritePeople = async () => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
-      const userFavorites = sessionFavoritePeople.get(userEmail) || []
-      setFavoritePeople(userFavorites)
-      console.log('👥 Loaded favorite people:', userFavorites.length)
+      
+      // Load from persistent storage
+      const storedFavorites = persistentStorage.getFavoritePeople(userEmail)
+      setFavoritePeople(storedFavorites)
+      
+      console.log('👥 Loaded favorite people from persistent storage:', storedFavorites.length)
+      
     } catch (error) {
       console.error('❌ Error loading favorite people:', error)
     } finally {
@@ -56,12 +71,7 @@ export default function FavoritePeoplePage() {
     }
   }
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce((query: string) => handleSearch(query), 500),
-    []
-  )
-
+  // FIXED: Working search function
   const handleSearch = async (query: string) => {
     if (query.length < 2) {
       setShowSearchResults(false)
@@ -72,6 +82,7 @@ export default function FavoritePeoplePage() {
     setIsSearching(true)
     
     try {
+      console.log('🔍 Searching for people:', query)
       const response = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}&type=person`)
       const data = await response.json()
       
@@ -80,6 +91,7 @@ export default function FavoritePeoplePage() {
         setShowSearchResults(true)
         console.log('🔍 Person search results:', data.results?.length || 0)
       } else {
+        console.error('Search failed:', data.error)
         setSearchResults([])
       }
     } catch (error) {
@@ -90,35 +102,39 @@ export default function FavoritePeoplePage() {
     }
   }
 
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((query: string) => handleSearch(query), 500),
+    []
+  )
+
   const addToFavorites = async (person: any) => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
-      const userFavorites = sessionFavoritePeople.get(userEmail) || []
+      console.log('👤 Adding to favorites:', person.name)
       
-      // Check if already exists
-      const exists = userFavorites.find(p => p.id === person.id)
-      if (exists) {
-        showNotification(`${person.name} is already in your favorites`, 'error')
-        return
+      // Use persistent storage for immediate response
+      const success = persistentStorage.addFavoritePerson(userEmail, person)
+      
+      if (success) {
+        // Update UI immediately
+        const newFavorite = {
+          id: person.id,
+          name: person.name,
+          profile_path: person.profile_path,
+          known_for_department: person.known_for_department || 'Acting',
+          known_for: person.known_for || [],
+          popularity: person.popularity || 0,
+          addedAt: new Date().toISOString()
+        }
+        
+        setFavoritePeople(prev => [...prev, newFavorite])
+        showNotification(`✅ ${person.name} added to favorites!`, 'success')
+        setShowSearchResults(false)
+        setSearchQuery('')
+      } else {
+        showNotification(`📋 ${person.name} is already in your favorites`, 'error')
       }
-
-      const favoriteItem = {
-        id: person.id,
-        name: person.name,
-        profile_path: person.profile_path,
-        known_for_department: person.known_for_department || 'Acting',
-        known_for: person.known_for || [],
-        popularity: person.popularity || 0,
-        addedAt: new Date().toISOString()
-      }
-
-      userFavorites.push(favoriteItem)
-      sessionFavoritePeople.set(userEmail, userFavorites)
-      setFavoritePeople(userFavorites)
-
-      showNotification(`✅ ${person.name} added to favorites!`, 'success')
-      setShowSearchResults(false)
-      setSearchQuery('')
     } catch (error) {
       console.error('❌ Error adding to favorites:', error)
       showNotification('Failed to add to favorites', 'error')
@@ -128,15 +144,18 @@ export default function FavoritePeoplePage() {
   const removeFromFavorites = async (personId: number) => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
-      const userFavorites = sessionFavoritePeople.get(userEmail) || []
       
-      const personToRemove = userFavorites.find(p => p.id === personId)
-      const updatedFavorites = userFavorites.filter(p => p.id !== personId)
+      // Find person to remove
+      const personToRemove = favoritePeople.find(p => p.id === personId)
       
-      sessionFavoritePeople.set(userEmail, updatedFavorites)
-      setFavoritePeople(updatedFavorites)
-
-      showNotification(`🗑️ ${personToRemove?.name || 'Person'} removed from favorites`, 'success')
+      // Remove from persistent storage
+      const success = persistentStorage.removeFavoritePerson(userEmail, personId)
+      
+      if (success) {
+        // Update UI immediately
+        setFavoritePeople(prev => prev.filter(p => p.id !== personId))
+        showNotification(`🗑️ ${personToRemove?.name || 'Person'} removed from favorites`, 'success')
+      }
     } catch (error) {
       console.error('❌ Error removing from favorites:', error)
     }
@@ -216,7 +235,7 @@ export default function FavoritePeoplePage() {
           </p>
         </div>
 
-        {/* Search Bar */}
+        {/* FIXED Search Bar with Live Results */}
         <div className="max-w-2xl mx-auto mb-8 relative">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
@@ -288,19 +307,30 @@ export default function FavoritePeoplePage() {
                         )}
                       </div>
 
-                      {/* Add Button */}
+                      {/* FIXED: Add to Favorites Button */}
                       <button
                         onClick={() => addToFavorites(person)}
                         className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 p-2 rounded-lg transition-colors flex items-center gap-2"
                         title="Add to favorites"
                       >
                         <Plus className="w-4 h-4" />
-                        <span className="hidden md:inline">Add</span>
+                        <span className="hidden md:inline">Add to Favorites</span>
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {/* No Results */}
+          {showSearchResults && searchResults.length === 0 && searchQuery.length > 1 && !isSearching && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 p-4 z-50"
+            >
+              <p className="text-white/60 text-center">No results found for "{searchQuery}"</p>
             </motion.div>
           )}
         </div>
@@ -414,17 +444,4 @@ export default function FavoritePeoplePage() {
       </div>
     </div>
   )
-}
-
-// Debounce helper function
-function debounce(func: Function, wait: number) {
-  let timeout: NodeJS.Timeout
-  return function executedFunction(...args: any[]) {
-    const later = () => {
-      clearTimeout(timeout)
-      func(...args)
-    }
-    clearTimeout(timeout)
-    timeout = setTimeout(later, wait)
-  }
 }
