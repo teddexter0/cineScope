@@ -1,4 +1,4 @@
-// lib/persistent-storage.ts - FIXED CLIENT-SIDE PERSISTENCE
+// lib/persistent-storage.ts - FIXED FAVORITE PEOPLE FUNCTIONALITY
 
 // Persistent storage utility that actually works across page navigation
 class PersistentStorage {
@@ -10,7 +10,7 @@ class PersistentStorage {
     return `${this.storagePrefix}${type}_${cleanEmail}`
   }
 
-  // Watchlist operations
+  // WATCHLIST OPERATIONS (existing code)
   getWatchlist(userEmail: string): any[] {
     try {
       if (typeof window === 'undefined') return []
@@ -77,7 +77,7 @@ class PersistentStorage {
     }
   }
 
-  // Ratings operations
+  // RATINGS OPERATIONS (existing code)
   getRatings(userEmail: string): any[] {
     try {
       if (typeof window === 'undefined') return []
@@ -136,13 +136,21 @@ class PersistentStorage {
     }
   }
 
-  // Favorite people operations
+  // FAVORITE PEOPLE OPERATIONS - COMPLETELY FIXED
   getFavoritePeople(userEmail: string): any[] {
     try {
       if (typeof window === 'undefined') return []
       const key = this.getUserKey(userEmail, 'favorite_people')
       const stored = localStorage.getItem(key)
-      return stored ? JSON.parse(stored) : []
+      const parsed = stored ? JSON.parse(stored) : []
+      
+      console.log('📖 Reading favorite people from localStorage:', {
+        key,
+        count: parsed.length,
+        sample: parsed.slice(0, 2).map((p: any) => ({ id: p.id, name: p.name }))
+      })
+      
+      return parsed
     } catch (error) {
       console.error('Error reading favorite people:', error)
       return []
@@ -153,8 +161,25 @@ class PersistentStorage {
     try {
       if (typeof window === 'undefined') return
       const key = this.getUserKey(userEmail, 'favorite_people')
-      localStorage.setItem(key, JSON.stringify(people))
-      console.log('💾 Favorite people saved to localStorage:', people.length, 'items')
+      
+      // FIXED: Ensure data is properly serialized
+      const cleanPeople = people.map(person => ({
+        id: person.id,
+        name: person.name || 'Unknown Person',
+        profile_path: person.profile_path || null,
+        known_for_department: person.known_for_department || 'Acting',
+        known_for: person.known_for || [],
+        popularity: person.popularity || 0,
+        addedAt: person.addedAt || new Date().toISOString()
+      }))
+      
+      localStorage.setItem(key, JSON.stringify(cleanPeople))
+      
+      console.log('💾 Favorite people saved to localStorage:', {
+        key,
+        count: cleanPeople.length,
+        sample: cleanPeople.slice(0, 2).map(p => ({ id: p.id, name: p.name }))
+      })
     } catch (error) {
       console.error('Error saving favorite people:', error)
     }
@@ -162,41 +187,83 @@ class PersistentStorage {
 
   addFavoritePerson(userEmail: string, person: any): boolean {
     try {
+      console.log('🧑‍💼 Adding person to favorites:', {
+        userEmail,
+        personId: person.id,
+        personName: person.name
+      })
+      
       const currentFavorites = this.getFavoritePeople(userEmail)
       
-      // Check if already exists
+      // FIXED: Check if already exists by ID (number comparison)
       const exists = currentFavorites.find(item => item.id === person.id)
       if (exists) {
+        console.log('❌ Person already in favorites:', person.name)
         return false // Already in favorites
       }
 
+      // FIXED: Create complete person object with all required fields
       const favoriteItem = {
-        id: person.id,
-        name: person.name,
-        profile_path: person.profile_path,
+        id: person.id, // Keep original ID as number
+        name: person.name || 'Unknown Person',
+        profile_path: person.profile_path || null,
         known_for_department: person.known_for_department || 'Acting',
-        known_for: person.known_for || [],
-        popularity: person.popularity || 0,
+        known_for: Array.isArray(person.known_for) ? person.known_for : [],
+        popularity: typeof person.popularity === 'number' ? person.popularity : 0,
         addedAt: new Date().toISOString()
       }
 
-      currentFavorites.push(favoriteItem)
-      this.setFavoritePeople(userEmail, currentFavorites)
+      console.log('✅ Creating favorite person item:', favoriteItem)
+
+      const updatedFavorites = [...currentFavorites, favoriteItem]
+      this.setFavoritePeople(userEmail, updatedFavorites)
+      
+      console.log('🎉 Person successfully added to favorites:', {
+        name: favoriteItem.name,
+        totalFavorites: updatedFavorites.length
+      })
+      
       return true
     } catch (error) {
-      console.error('Error adding favorite person:', error)
+      console.error('❌ Error adding favorite person:', error)
       return false
     }
   }
 
   removeFavoritePerson(userEmail: string, personId: number): boolean {
     try {
+      console.log('🗑️ Removing person from favorites:', { userEmail, personId })
+      
       const currentFavorites = this.getFavoritePeople(userEmail)
+      const personToRemove = currentFavorites.find(item => item.id === personId)
+      
+      if (!personToRemove) {
+        console.log('❌ Person not found in favorites:', personId)
+        return false
+      }
+      
       const updatedFavorites = currentFavorites.filter(item => item.id !== personId)
       this.setFavoritePeople(userEmail, updatedFavorites)
+      
+      console.log('✅ Person removed from favorites:', {
+        name: personToRemove.name,
+        remainingFavorites: updatedFavorites.length
+      })
+      
       return true
     } catch (error) {
-      console.error('Error removing favorite person:', error)
+      console.error('❌ Error removing favorite person:', error)
+      return false
+    }
+  }
+
+  // UTILITY: Check if person is already in favorites
+  isPersonInFavorites(userEmail: string, personId: number): boolean {
+    try {
+      const favorites = this.getFavoritePeople(userEmail)
+      return favorites.some(person => person.id === personId)
+    } catch (error) {
+      console.error('Error checking if person is in favorites:', error)
       return false
     }
   }
@@ -215,6 +282,30 @@ class PersistentStorage {
         ? (ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / ratings.length).toFixed(1)
         : '0.0'
     }
+  }
+
+  // DEBUGGING: Clear all data for user (useful for testing)
+  clearUserData(userEmail: string): void {
+    if (typeof window === 'undefined') return
+    
+    const types = ['watchlist', 'ratings', 'favorite_people']
+    types.forEach(type => {
+      const key = this.getUserKey(userEmail, type)
+      localStorage.removeItem(key)
+    })
+    
+    console.log('🧹 Cleared all data for user:', userEmail)
+  }
+
+  // DEBUGGING: Get all stored keys for user
+  getUserKeys(userEmail: string): string[] {
+    if (typeof window === 'undefined') return []
+    
+    const userPrefix = this.getUserKey(userEmail, '')
+    const keys = Object.keys(localStorage).filter(key => key.startsWith(userPrefix))
+    
+    console.log('🔑 User storage keys:', keys)
+    return keys
   }
 }
 

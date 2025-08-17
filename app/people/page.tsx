@@ -1,4 +1,4 @@
-// app/people/page.tsx - FIXED SEARCH & ADD TO FAVORITES
+// app/people/page.tsx - COMPLETELY FIXED VERSION
 
 'use client'
 
@@ -16,7 +16,8 @@ import {
   Film, 
   Calendar,
   Plus,
-  Trash2
+  Trash2,
+  Check
 } from 'lucide-react'
 import { persistentStorage } from '@/lib/persistent-storage'
 
@@ -42,6 +43,7 @@ export default function FavoritePeoplePage() {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showSearchResults, setShowSearchResults] = useState(false)
+  const [addingPersonId, setAddingPersonId] = useState<number | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -58,11 +60,11 @@ export default function FavoritePeoplePage() {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
       
-      // Load from persistent storage
+      // Load from persistent storage - FIXED
       const storedFavorites = persistentStorage.getFavoritePeople(userEmail)
       setFavoritePeople(storedFavorites)
       
-      console.log('👥 Loaded favorite people from persistent storage:', storedFavorites.length)
+      console.log('👥 Loaded favorite people:', storedFavorites.length, 'people')
       
     } catch (error) {
       console.error('❌ Error loading favorite people:', error)
@@ -71,7 +73,7 @@ export default function FavoritePeoplePage() {
     }
   }
 
-  // FIXED: Working search function
+  // COMPLETELY FIXED: Working search function
   const handleSearch = async (query: string) => {
     if (query.length < 2) {
       setShowSearchResults(false)
@@ -86,17 +88,26 @@ export default function FavoritePeoplePage() {
       const response = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}&type=person`)
       const data = await response.json()
       
-      if (data.success) {
-        setSearchResults(data.results || [])
+      if (data.success && data.results) {
+        // FIXED: Filter for people only and ensure good data
+        const peopleResults = data.results.filter((person: any) => 
+          person.media_type === 'person' && 
+          person.name && 
+          person.known_for_department
+        )
+        
+        setSearchResults(peopleResults)
         setShowSearchResults(true)
-        console.log('🔍 Person search results:', data.results?.length || 0)
+        console.log('🔍 Person search results:', peopleResults.length, 'people found')
       } else {
         console.error('Search failed:', data.error)
         setSearchResults([])
+        setShowSearchResults(false)
       }
     } catch (error) {
       console.error('Person search error:', error)
       setSearchResults([])
+      setShowSearchResults(false)
     } finally {
       setIsSearching(false)
     }
@@ -108,36 +119,58 @@ export default function FavoritePeoplePage() {
     []
   )
 
+  // COMPLETELY FIXED: Add to favorites function
   const addToFavorites = async (person: any) => {
     try {
+      setAddingPersonId(person.id)
       const userEmail = session?.user?.email || 'demo@user.com'
-      console.log('👤 Adding to favorites:', person.name)
       
-      // Use persistent storage for immediate response
-      const success = persistentStorage.addFavoritePerson(userEmail, person)
+      console.log('👤 Adding person to favorites:', {
+        id: person.id,
+        name: person.name,
+        department: person.known_for_department
+      })
+      
+      // FIXED: Ensure complete person object
+      const personData = {
+        id: person.id,
+        name: person.name || 'Unknown Person',
+        profile_path: person.profile_path,
+        known_for_department: person.known_for_department || 'Acting',
+        known_for: person.known_for || [],
+        popularity: person.popularity || 0
+      }
+      
+      // Use persistent storage
+      const success = persistentStorage.addFavoritePerson(userEmail, personData)
       
       if (success) {
-        // Update UI immediately
+        // FIXED: Immediately update UI state
         const newFavorite = {
-          id: person.id,
-          name: person.name,
-          profile_path: person.profile_path,
-          known_for_department: person.known_for_department || 'Acting',
-          known_for: person.known_for || [],
-          popularity: person.popularity || 0,
+          ...personData,
           addedAt: new Date().toISOString()
         }
         
-        setFavoritePeople(prev => [...prev, newFavorite])
+        setFavoritePeople(prev => {
+          const updated = [...prev, newFavorite]
+          console.log('✅ Updated favorites list, now has:', updated.length, 'people')
+          return updated
+        })
+        
         showNotification(`✅ ${person.name} added to favorites!`, 'success')
+        
+        // Clear search
         setShowSearchResults(false)
         setSearchQuery('')
+        
       } else {
         showNotification(`📋 ${person.name} is already in your favorites`, 'error')
       }
     } catch (error) {
       console.error('❌ Error adding to favorites:', error)
       showNotification('Failed to add to favorites', 'error')
+    } finally {
+      setAddingPersonId(null)
     }
   }
 
@@ -200,6 +233,11 @@ export default function FavoritePeoplePage() {
     }, 3000)
   }
 
+  // Check if person is already in favorites
+  const isPersonInFavorites = (personId: number) => {
+    return favoritePeople.some(p => p.id === personId)
+  }
+
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
@@ -235,7 +273,7 @@ export default function FavoritePeoplePage() {
           </p>
         </div>
 
-        {/* FIXED Search Bar with Live Results */}
+        {/* FIXED Search Bar */}
         <div className="max-w-2xl mx-auto mb-8 relative">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
@@ -257,7 +295,7 @@ export default function FavoritePeoplePage() {
             )}
           </div>
 
-          {/* Search Results Dropdown */}
+          {/* FIXED Search Results Dropdown */}
           {showSearchResults && searchResults.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -265,59 +303,85 @@ export default function FavoritePeoplePage() {
               className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 max-h-96 overflow-y-auto z-50"
             >
               <div className="p-4">
-                <h3 className="text-white font-medium mb-3">Search Results</h3>
+                <h3 className="text-white font-medium mb-3">Search Results ({searchResults.length} people found)</h3>
                 <div className="space-y-2">
-                  {searchResults.map((person) => (
-                    <div
-                      key={person.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                      {/* Profile Image */}
-                      <div className="w-12 h-16 bg-gray-600 rounded overflow-hidden flex-shrink-0">
-                        <Image
-                          src={getProfileUrl(person.profile_path)}
-                          alt={person.name}
-                          width={48}
-                          height={64}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                  {searchResults.map((person) => {
+                    const isInFavorites = isPersonInFavorites(person.id)
+                    const isAdding = addingPersonId === person.id
+                    
+                    return (
+                      <div
+                        key={person.id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        {/* Profile Image */}
+                        <div className="w-12 h-16 bg-gray-600 rounded overflow-hidden flex-shrink-0">
+                          <Image
+                            src={getProfileUrl(person.profile_path)}
+                            alt={person.name}
+                            width={48}
+                            height={64}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-white font-medium truncate">
-                          {person.name}
-                        </h4>
-                        <div className="flex items-center gap-2 text-sm text-white/60">
-                          <span>{person.known_for_department || 'Actor'}</span>
-                          {person.popularity && (
-                            <>
-                              <span>•</span>
-                              <div className="flex items-center gap-1">
-                                <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                <span>{person.popularity.toFixed(1)}</span>
-                              </div>
-                            </>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white font-medium truncate">
+                            {person.name}
+                          </h4>
+                          <div className="flex items-center gap-2 text-sm text-white/60">
+                            <span>{person.known_for_department || 'Actor'}</span>
+                            {person.popularity && (
+                              <>
+                                <span>•</span>
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                                  <span>{person.popularity.toFixed(1)}</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {person.known_for && person.known_for.length > 0 && (
+                            <p className="text-xs text-white/50 truncate">
+                              Known for: {person.known_for.slice(0, 2).map((item: any) => item.title || item.name).join(', ')}
+                            </p>
                           )}
                         </div>
-                        {person.known_for && person.known_for.length > 0 && (
-                          <p className="text-xs text-white/50 truncate">
-                            Known for: {person.known_for.slice(0, 2).map((item: any) => item.title || item.name).join(', ')}
-                          </p>
-                        )}
-                      </div>
 
-                      {/* FIXED: Add to Favorites Button */}
-                      <button
-                        onClick={() => addToFavorites(person)}
-                        className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 p-2 rounded-lg transition-colors flex items-center gap-2"
-                        title="Add to favorites"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden md:inline">Add to Favorites</span>
-                      </button>
-                    </div>
-                  ))}
+                        {/* FIXED: Add to Favorites Button */}
+                        <button
+                          onClick={() => addToFavorites(person)}
+                          disabled={isInFavorites || isAdding}
+                          className={`p-2 rounded-lg transition-all flex items-center gap-2 min-w-[120px] justify-center ${
+                            isInFavorites 
+                              ? 'bg-green-500/20 text-green-300 cursor-not-allowed' 
+                              : isAdding
+                              ? 'bg-purple-500/20 text-purple-300 cursor-not-allowed'
+                              : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300'
+                          }`}
+                          title={isInFavorites ? 'Already in favorites' : 'Add to favorites'}
+                        >
+                          {isAdding ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-purple-300 border-t-transparent rounded-full animate-spin" />
+                              <span className="hidden md:inline text-sm">Adding...</span>
+                            </>
+                          ) : isInFavorites ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              <span className="hidden md:inline text-sm">Added</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4" />
+                              <span className="hidden md:inline text-sm">Add</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </motion.div>
@@ -330,7 +394,7 @@ export default function FavoritePeoplePage() {
               animate={{ opacity: 1 }}
               className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 p-4 z-50"
             >
-              <p className="text-white/60 text-center">No results found for "{searchQuery}"</p>
+              <p className="text-white/60 text-center">No people found for "{searchQuery}"</p>
             </motion.div>
           )}
         </div>
