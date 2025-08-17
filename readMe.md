@@ -9,6 +9,25 @@ Never wonder what to watch again. CineScope uses advanced AI to understand your 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 
+
+## Screenshots
+
+### Home Page
+
+<img src="assets/home.png" alt="Home Page Screenshot" width="400">
+
+### Search Page
+
+<img src="assets/favoriteSearch.png" alt="Search Page Screenshot" width="400">
+
+### Movie Page
+
+<img src="assets/favorites.png" alt="Movie Page Screenshot" width="400">
+
+### Profile Page
+
+<img src="assets/aiRecs.png" alt="Profile Page Screenshot" width="400">
+
 ## ✨ Features
 
 ### 🧠 AI Personality Analysis
