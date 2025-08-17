@@ -172,4 +172,4 @@ Project Link: https://github.com/teddexter0/cineScope
 
 **Built with ⚡ and lots of ☕**
 
-*CineScope - Because life's too short for bad movies*
+*CineScope - Because life's too short for bad movies*# Updated Mon, Aug 18, 2025 12:37:35 AM
