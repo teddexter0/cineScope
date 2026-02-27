@@ -190,7 +190,7 @@ function analyzePersonalityClientSide(responses: Record<number, string>) {
 // Helper functions for client-side analysis
 function extractGenresWithCustomAI(analysis: any): Record<string, number> {
   const genreWeights: Record<string, number> = {}
-  const allText = Object.values(analysis).join(' ').toLowerCase()
+  const allText = Object.values(analysis).map((v: any) => Array.isArray(v) ? v.join(' ') : v).join(' ').toLowerCase()
   
   const genreKeywords = {
     '18': ['drama', 'emotional', 'deep', 'touching', 'meaningful', 'character', 'relationship', 'life', 'real'],
@@ -205,8 +205,8 @@ function extractGenresWithCustomAI(analysis: any): Record<string, number> {
     '12': ['adventure', 'journey', 'exploration', 'quest', 'travel', 'discovery']
   }
 
-  // Direct genre selection from user's choice
-  const selectedGenre = analysis.genre.toLowerCase()
+  // Direct genre selection from user's choice (genre may be array from multi-select)
+  const selectedGenre = (Array.isArray(analysis.genre) ? analysis.genre.join(' ') : analysis.genre).toLowerCase()
   Object.entries(genreKeywords).forEach(([genreId, keywords]) => {
     if (keywords.some(keyword => selectedGenre.includes(keyword))) {
       genreWeights[genreId] = 0.9
