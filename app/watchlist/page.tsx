@@ -7,14 +7,23 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { Star, Trash2, Play, ArrowLeft } from 'lucide-react'
+import { Star, Trash2, Play, ArrowLeft, Upload, CheckCircle, XCircle, Loader } from 'lucide-react'
 import { persistentStorage } from '@/lib/persistent-storage'
+
+interface ImportResult {
+  total: number
+  imported: number
+  skipped: number
+  failed: string[]
+}
 
 export default function WatchlistPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [watchlist, setWatchlist] = useState<any[]>([])
+  const [isImporting, setIsImporting] = useState(false)
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -97,6 +106,101 @@ export default function WatchlistPage() {
     }
   }
 
+  const parseImdbCsv = (csvText: string): Array<{ title: string; year: string; imdbId: string }> => {
+    const lines = csvText.split('\n').filter(l => l.trim())
+    if (lines.length < 2) return []
+
+    const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase())
+    const titleIdx = header.findIndex(h => h === 'title')
+    const yearIdx = header.findIndex(h => h === 'year')
+    const constIdx = header.findIndex(h => h === 'const')
+
+    return lines.slice(1).map(line => {
+      // Handle quoted CSV fields properly
+      const fields: string[] = []
+      let current = ''
+      let inQuotes = false
+      for (const char of line) {
+        if (char === '"') { inQuotes = !inQuotes }
+        else if (char === ',' && !inQuotes) { fields.push(current); current = '' }
+        else { current += char }
+      }
+      fields.push(current)
+
+      return {
+        title: titleIdx >= 0 ? fields[titleIdx]?.trim() ?? '' : '',
+        year: yearIdx >= 0 ? fields[yearIdx]?.trim() ?? '' : '',
+        imdbId: constIdx >= 0 ? fields[constIdx]?.trim() ?? '' : ''
+      }
+    }).filter(item => item.title)
+  }
+
+  const searchTmdbForTitle = async (title: string, year: string): Promise<any | null> => {
+    try {
+      const query = encodeURIComponent(title)
+      const yearParam = year ? `&year=${year}` : ''
+      const res = await fetch(
+        `https://api.themoviedb.org/3/search/multi?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}${yearParam}&include_adult=false`
+      )
+      const data = await res.json()
+      const result = (data.results || []).find((r: any) => r.poster_path && r.vote_average > 0)
+      return result || null
+    } catch {
+      return null
+    }
+  }
+
+  const handleImdbImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsImporting(true)
+    setImportResult(null)
+
+    try {
+      const text = await file.text()
+      const items = parseImdbCsv(text)
+      const userEmail = session?.user?.email || 'demo@user.com'
+
+      const result: ImportResult = { total: items.length, imported: 0, skipped: 0, failed: [] }
+
+      for (const item of items) {
+        if (!item.title) continue
+        const tmdbMovie = await searchTmdbForTitle(item.title, item.year)
+        if (!tmdbMovie) {
+          result.failed.push(item.title)
+          continue
+        }
+
+        const movieData = {
+          id: tmdbMovie.id,
+          title: tmdbMovie.title || tmdbMovie.name,
+          poster_path: tmdbMovie.poster_path,
+          vote_average: tmdbMovie.vote_average,
+          release_date: tmdbMovie.release_date || tmdbMovie.first_air_date,
+          overview: tmdbMovie.overview,
+          media_type: tmdbMovie.media_type || 'movie'
+        }
+
+        const added = persistentStorage.addToWatchlist(userEmail, movieData)
+        if (added) { result.imported++ } else { result.skipped++ }
+
+        // Small delay to be polite to the TMDB API
+        await new Promise(r => setTimeout(r, 250))
+      }
+
+      // Refresh displayed list
+      setWatchlist(persistentStorage.getWatchlist(userEmail))
+      setImportResult(result)
+    } catch (err) {
+      console.error('IMDB import error:', err)
+    } finally {
+      setIsImporting(false)
+      // Reset file input
+      e.target.value = ''
+    }
+  }
+
   const getPosterUrl = (posterPath: string | null) => {
     if (posterPath) {
       return `https://image.tmdb.org/t/p/w500${posterPath}`
@@ -135,10 +239,62 @@ export default function WatchlistPage() {
               Back to Dashboard
             </button>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">📋 My Watchlist</h1>
-          <p className="text-purple-200">
-            {watchlist.length} movies saved • Keep track of what you want to watch
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">📋 My Watchlist</h1>
+              <p className="text-purple-200">
+                {watchlist.length} {watchlist.length === 1 ? 'title' : 'titles'} saved • Keep track of what you want to watch
+              </p>
+            </div>
+
+            {/* IMDB Import */}
+            <div className="flex-shrink-0">
+              <label className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm cursor-pointer transition-all duration-200 ${
+                isImporting
+                  ? 'bg-white/10 text-white/50 cursor-not-allowed'
+                  : 'bg-yellow-400/20 hover:bg-yellow-400/30 border border-yellow-400/40 text-yellow-300 hover:text-yellow-200'
+              }`}>
+                {isImporting ? (
+                  <><Loader className="w-4 h-4 animate-spin" /> Importing...</>
+                ) : (
+                  <><Upload className="w-4 h-4" /> Import IMDB Watchlist</>
+                )}
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  disabled={isImporting}
+                  onChange={handleImdbImport}
+                />
+              </label>
+              <p className="text-white/30 text-xs mt-1 text-right">Export CSV from imdb.com/list/watchlist</p>
+            </div>
+          </div>
+
+          {/* Import result banner */}
+          {importResult && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 bg-white/10 border border-white/20 rounded-xl p-4 flex items-start gap-3"
+            >
+              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-medium">
+                  Import complete — {importResult.imported} added, {importResult.skipped} already in list
+                  {importResult.failed.length > 0 && `, ${importResult.failed.length} not found on TMDB`}
+                </p>
+                {importResult.failed.length > 0 && (
+                  <p className="text-white/50 text-xs mt-1 truncate">
+                    Couldn't find: {importResult.failed.slice(0, 5).join(', ')}{importResult.failed.length > 5 ? `… +${importResult.failed.length - 5} more` : ''}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => setImportResult(null)} className="text-white/40 hover:text-white/70 flex-shrink-0">
+                <XCircle className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
         </div>
 
         {/* Watchlist Content */}

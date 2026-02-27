@@ -41,8 +41,7 @@ async function generateEnhancedRecommendations(userProfile: any): Promise<any[]>
     console.log('🎬 Generating ENHANCED AI recommendations with TV shows...')
     
     const allContent: any[] = []
-    const currentTime = Date.now()
-    const dynamicSeed = Math.floor(currentTime / (1000 * 60 * 3)) % 50 + 1
+    const dynamicSeed = Math.floor(Math.random() * 500) + 1
 
     // 1. MOVIES (40% of recommendations)
     console.log('🎬 Fetching movies...')
@@ -122,8 +121,13 @@ async function generateTVRecommendations(userProfile: any, seed: number): Promis
 
 async function fetchMoviesByGenre(genreId: string, page: number): Promise<any[]> {
   try {
+    const sortOptions = ['popularity.desc', 'vote_average.desc', 'primary_release_date.desc', 'revenue.desc']
+    const sortBy = sortOptions[Math.floor(Math.random() * sortOptions.length)]
+    const recentFilter = Math.random() > 0.5 ? '&primary_release_date.gte=2022-01-01' : ''
+    const minVotes = sortBy === 'vote_average.desc' ? 200 : 50
+    const randomPage = Math.floor(Math.random() * 20) + 1
     const response = await fetch(
-      `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=popularity.desc&vote_count.gte=100&page=${page}&vote_average.gte=6.0`
+      `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=${sortBy}&vote_count.gte=${minVotes}&page=${randomPage}&vote_average.gte=6.0${recentFilter}`
     )
     const data = await response.json()
     return (data.results?.slice(0, 4) || []).map((movie: any) => ({
@@ -139,8 +143,12 @@ async function fetchMoviesByGenre(genreId: string, page: number): Promise<any[]>
 
 async function fetchTVShowsByGenre(genreId: string, page: number): Promise<any[]> {
   try {
+    const sortOptions = ['popularity.desc', 'vote_average.desc', 'first_air_date.desc']
+    const sortBy = sortOptions[Math.floor(Math.random() * sortOptions.length)]
+    const recentFilter = Math.random() > 0.5 ? '&first_air_date.gte=2021-01-01' : ''
+    const randomPage = Math.floor(Math.random() * 15) + 1
     const response = await fetch(
-      `https://api.themoviedb.org/3/discover/tv?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=popularity.desc&vote_count.gte=50&page=${page}&vote_average.gte=6.0`
+      `https://api.themoviedb.org/3/discover/tv?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=${sortBy}&vote_count.gte=30&page=${randomPage}&vote_average.gte=6.0${recentFilter}`
     )
     const data = await response.json()
     
@@ -159,9 +167,10 @@ async function fetchTVShowsByGenre(genreId: string, page: number): Promise<any[]
 
 async function fetchTrendingTVShows(seed: number): Promise<any[]> {
   try {
-    const timeWindow = seed % 2 === 0 ? 'day' : 'week'
+    const timeWindow = Math.random() > 0.5 ? 'day' : 'week'
+    const page = Math.floor(Math.random() * 5) + 1
     const response = await fetch(
-      `https://api.themoviedb.org/3/trending/tv/${timeWindow}?api_key=${TMDB_API_KEY}&page=${seed % 3 + 1}`
+      `https://api.themoviedb.org/3/trending/tv/${timeWindow}?api_key=${TMDB_API_KEY}&page=${page}`
     )
     const data = await response.json()
     
@@ -180,8 +189,9 @@ async function fetchTrendingTVShows(seed: number): Promise<any[]> {
 
 async function fetchPopularTVShows(seed: number): Promise<any[]> {
   try {
+    const page = Math.floor(Math.random() * 10) + 1
     const response = await fetch(
-      `https://api.themoviedb.org/3/tv/popular?api_key=${TMDB_API_KEY}&page=${seed % 5 + 1}`
+      `https://api.themoviedb.org/3/tv/popular?api_key=${TMDB_API_KEY}&page=${page}`
     )
     const data = await response.json()
     
@@ -200,8 +210,9 @@ async function fetchPopularTVShows(seed: number): Promise<any[]> {
 
 async function fetchTrendingMixed(seed: number): Promise<any[]> {
   try {
+    const page = Math.floor(Math.random() * 8) + 1
     const response = await fetch(
-      `https://api.themoviedb.org/3/trending/all/week?api_key=${TMDB_API_KEY}&page=${seed % 3 + 1}`
+      `https://api.themoviedb.org/3/trending/all/week?api_key=${TMDB_API_KEY}&page=${page}`
     )
     const data = await response.json()
     

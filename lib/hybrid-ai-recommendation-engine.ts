@@ -44,8 +44,8 @@ export class SmartAIRecommendationEngine {
       console.log('👤 User profile:', userProfile)
       
       const allContent: any[] = []
-      const currentTime = Date.now()
-      const dynamicSeed = Math.floor(currentTime / (1000 * 60 * 3)) % 50 + 1 // Changes every 3 minutes!
+      // Truly random seed every call so retrain always gives fresh results
+      const dynamicSeed = Math.floor(Math.random() * 500) + 1
 
       // 1. MOVIES (40% of recommendations)
       console.log('🎬 Fetching movies...')
@@ -96,7 +96,7 @@ export class SmartAIRecommendationEngine {
   private async generateTVRecommendations(userProfile: any, seed: number): Promise<any[]> {
     try {
       console.log('📺 Generating TV show recommendations with seed:', seed)
-      
+
       const topGenres = Object.entries(userProfile.preferredGenres || {})
         .sort(([,a], [,b]) => (b as number) - (a as number))
         .slice(0, 3)
@@ -105,10 +105,9 @@ export class SmartAIRecommendationEngine {
       console.log('🎯 Top genres for TV:', topGenres)
 
       const tvShows: any[] = []
-      
-      // Get TV shows by genre
+
       for (const genreId of topGenres) {
-        const page = (seed % 4) + 1
+        const page = Math.floor(Math.random() * 15) + 1
         const shows = await this.fetchTVShowsByGenre(genreId, page, userProfile)
         tvShows.push(...shows)
       }
@@ -131,8 +130,11 @@ export class SmartAIRecommendationEngine {
 
   private async fetchTVShowsByGenre(genreId: string, page: number, userProfile: any): Promise<any[]> {
     try {
+      const sortOptions = ['popularity.desc', 'vote_average.desc', 'first_air_date.desc']
+      const sortBy = sortOptions[Math.floor(Math.random() * sortOptions.length)]
+      const recentFilter = Math.random() > 0.5 ? '&first_air_date.gte=2021-01-01' : ''
       const response = await fetch(
-        `https://api.themoviedb.org/3/discover/tv?api_key=${this.tmdbApiKey}&with_genres=${genreId}&sort_by=popularity.desc&vote_count.gte=50&page=${page}&vote_average.gte=6.0`
+        `https://api.themoviedb.org/3/discover/tv?api_key=${this.tmdbApiKey}&with_genres=${genreId}&sort_by=${sortBy}&vote_count.gte=30&page=${page}&vote_average.gte=6.0${recentFilter}`
       )
       const data = await response.json()
       
@@ -152,9 +154,10 @@ export class SmartAIRecommendationEngine {
 
   private async fetchTrendingTVShows(seed: number): Promise<any[]> {
     try {
-      const timeWindow = seed % 2 === 0 ? 'day' : 'week'
+      const timeWindow = Math.random() > 0.5 ? 'day' : 'week'
+      const page = Math.floor(Math.random() * 5) + 1
       const response = await fetch(
-        `https://api.themoviedb.org/3/trending/tv/${timeWindow}?api_key=${this.tmdbApiKey}&page=${seed % 3 + 1}`
+        `https://api.themoviedb.org/3/trending/tv/${timeWindow}?api_key=${this.tmdbApiKey}&page=${page}`
       )
       const data = await response.json()
       
@@ -173,8 +176,9 @@ export class SmartAIRecommendationEngine {
 
   private async fetchPopularTVShows(seed: number): Promise<any[]> {
     try {
+      const page = Math.floor(Math.random() * 10) + 1
       const response = await fetch(
-        `https://api.themoviedb.org/3/tv/popular?api_key=${this.tmdbApiKey}&page=${seed % 5 + 1}`
+        `https://api.themoviedb.org/3/tv/popular?api_key=${this.tmdbApiKey}&page=${page}`
       )
       const data = await response.json()
       
@@ -201,21 +205,27 @@ export class SmartAIRecommendationEngine {
     console.log('🎯 Top genres for movies:', topGenres)
 
     const movies: any[] = []
-    
+
     for (const genreId of topGenres) {
-      const page = (seed % 5) + 1
+      // Large page range (1-20) for real variety across calls
+      const page = Math.floor(Math.random() * 20) + 1
       const genreMovies = await this.fetchIntelligentMoviesByGenre(genreId, page, userProfile)
       movies.push(...genreMovies)
     }
-    
+
     console.log('🎬 Movie recommendations fetched:', movies.length, 'movies')
     return movies
   }
 
   private async fetchIntelligentMoviesByGenre(genreId: string, page: number, userProfile: any): Promise<any[]> {
     try {
+      const sortOptions = ['popularity.desc', 'vote_average.desc', 'primary_release_date.desc', 'revenue.desc']
+      const sortBy = sortOptions[Math.floor(Math.random() * sortOptions.length)]
+      // Occasionally filter to recent releases (last ~3 years) for freshness
+      const recentFilter = Math.random() > 0.5 ? '&primary_release_date.gte=2022-01-01' : ''
+      const minVotes = sortBy === 'vote_average.desc' ? 200 : 50
       const response = await fetch(
-        `https://api.themoviedb.org/3/discover/movie?api_key=${this.tmdbApiKey}&with_genres=${genreId}&sort_by=popularity.desc&vote_count.gte=100&page=${page}&vote_average.gte=6.0`
+        `https://api.themoviedb.org/3/discover/movie?api_key=${this.tmdbApiKey}&with_genres=${genreId}&sort_by=${sortBy}&vote_count.gte=${minVotes}&page=${page}&vote_average.gte=6.0${recentFilter}`
       )
       const data = await response.json()
       return (data.results?.slice(0, 4) || []).map((movie: any) => ({
@@ -232,8 +242,9 @@ export class SmartAIRecommendationEngine {
   // TRENDING MIXED CONTENT
   private async fetchTrendingMixed(seed: number): Promise<any[]> {
     try {
+      const page = Math.floor(Math.random() * 8) + 1
       const response = await fetch(
-        `https://api.themoviedb.org/3/trending/all/week?api_key=${this.tmdbApiKey}&page=${seed % 3 + 1}`
+        `https://api.themoviedb.org/3/trending/all/week?api_key=${this.tmdbApiKey}&page=${page}`
       )
       const data = await response.json()
       
@@ -277,14 +288,7 @@ export class SmartAIRecommendationEngine {
   // DYNAMIC REFRESH FUNCTIONALITY
   async refreshRecommendations(userProfile: any, forceRefresh: boolean = false): Promise<any[]> {
     console.log('🔄 Refreshing AI recommendations with force:', forceRefresh)
-    
-    if (forceRefresh) {
-      // Generate with FRESH seed based on current time
-      const freshSeed = Math.floor(Date.now() / 1000) % 100 + 1
-      return await this.generateEnhancedRecommendationsWithSeed(userProfile, freshSeed)
-    }
-    
-    // Generate new recommendations
+    // All paths use the same fully-random engine now
     return await this.generateEnhancedRecommendations(userProfile)
   }
 
