@@ -163,13 +163,13 @@ function analyzePersonalityClientSide(responses: Record<number, string>) {
   
   const analysis = {
     favoriteMovie: responses[1] || '',
-    relatedCharacter: responses[2] || '',
-    mood: responses[3] || '',
-    preference: responses[4] || '',
+    genre: Array.isArray(responses[2]) ? responses[2] : (responses[2] ? [String(responses[2])] : []),
+    storyStyle: responses[3] ?? 50,
+    mood: Array.isArray(responses[4]) ? responses[4] : (responses[4] ? [String(responses[4])] : []),
     importance: responses[5] || '',
-    genre: responses[6] || '',
+    pace: responses[6] ?? 50,
     favoriteActors: responses[7] || '',
-    dealbreakers: responses[8] || ''
+    dealbreakers: Array.isArray(responses[8]) ? responses[8] : (responses[8] ? [String(responses[8])] : [])
   }
 
   // Build personality profile
