@@ -37,7 +37,7 @@ class PersistentStorage {
   addToWatchlist(userEmail: string, movie: any): boolean {
     try {
       const currentWatchlist = this.getWatchlist(userEmail)
-      
+
       // Check if already exists
       const exists = currentWatchlist.find(item => item.movieId === movie.id?.toString())
       if (exists) {
@@ -53,6 +53,8 @@ class PersistentStorage {
         release_date: movie.release_date || movie.first_air_date,
         overview: movie.overview,
         media_type: movie.media_type || 'movie',
+        status: 'to_watch' as 'to_watch' | 'watched',
+        watchedAt: null as string | null,
         addedAt: new Date().toISOString()
       }
 
@@ -61,6 +63,36 @@ class PersistentStorage {
       return true
     } catch (error) {
       console.error('Error adding to watchlist:', error)
+      return false
+    }
+  }
+
+  markAsWatched(userEmail: string, movieId: string): boolean {
+    try {
+      const currentWatchlist = this.getWatchlist(userEmail)
+      const idx = currentWatchlist.findIndex(item => item.movieId === movieId)
+      if (idx < 0) return false
+      currentWatchlist[idx].status = 'watched'
+      currentWatchlist[idx].watchedAt = new Date().toISOString()
+      this.setWatchlist(userEmail, currentWatchlist)
+      return true
+    } catch (error) {
+      console.error('Error marking as watched:', error)
+      return false
+    }
+  }
+
+  markAsToWatch(userEmail: string, movieId: string): boolean {
+    try {
+      const currentWatchlist = this.getWatchlist(userEmail)
+      const idx = currentWatchlist.findIndex(item => item.movieId === movieId)
+      if (idx < 0) return false
+      currentWatchlist[idx].status = 'to_watch'
+      currentWatchlist[idx].watchedAt = null
+      this.setWatchlist(userEmail, currentWatchlist)
+      return true
+    } catch (error) {
+      console.error('Error marking as to-watch:', error)
       return false
     }
   }
