@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react' // <- ADD THIS LINE
+import { useRouter, useSearchParams } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Film, Eye, EyeOff, User, Mail, AtSign, Sparkles, AlertCircle, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -49,10 +49,16 @@ export default function SignUpPage() {
   const [mounted, setMounted] = useState(false)
   
   const router = useRouter()
+  const searchParams = useSearchParams()
 
-  // Fix hydration by waiting for mount
+  // Fix hydration by waiting for mount; also pre-fill email from ?email= query param
   useEffect(() => {
     setMounted(true)
+    const prefilledEmail = searchParams?.get('email')
+    if (prefilledEmail) {
+      setFormData(prev => ({ ...prev, email: prefilledEmail }))
+      setValidations(prev => ({ ...prev, email: validateEmail(prefilledEmail) }))
+    }
   }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
