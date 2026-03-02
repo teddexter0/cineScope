@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -34,7 +34,7 @@ const validateUsername = (username: string) => {
   return { isValid: true, message: 'Valid username' }
 }
 
-export default function SignUpPage() {
+function SignUpForm() {
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -426,5 +426,13 @@ const handleSubmit = async (e: React.FormEvent) => {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpForm />
+    </Suspense>
   )
 }
