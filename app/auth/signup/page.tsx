@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react' // <- ADD THIS LINE
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Film, Eye, EyeOff, User, Mail, AtSign, Sparkles, AlertCircle, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -34,7 +34,7 @@ const validateUsername = (username: string) => {
   return { isValid: true, message: 'Valid username' }
 }
 
-export default function SignUpPage() {
+function SignUpForm() {
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -49,10 +49,16 @@ export default function SignUpPage() {
   const [mounted, setMounted] = useState(false)
   
   const router = useRouter()
+  const searchParams = useSearchParams()
 
-  // Fix hydration by waiting for mount
+  // Fix hydration by waiting for mount; also pre-fill email from ?email= query param
   useEffect(() => {
     setMounted(true)
+    const prefilledEmail = searchParams?.get('email')
+    if (prefilledEmail) {
+      setFormData(prev => ({ ...prev, email: prefilledEmail }))
+      setValidations(prev => ({ ...prev, email: validateEmail(prefilledEmail) }))
+    }
   }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -420,5 +426,13 @@ const handleSubmit = async (e: React.FormEvent) => {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpForm />
+    </Suspense>
   )
 }

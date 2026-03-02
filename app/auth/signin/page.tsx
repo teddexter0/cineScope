@@ -24,6 +24,27 @@ export default function SignInPage() {
     setError('')
 
     try {
+      // Step 1: check if the email is registered before attempting sign-in
+      let emailExists = true
+      try {
+        const check = await fetch('/api/auth/check-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        })
+        const data = await check.json()
+        emailExists = data.exists
+      } catch {
+        // If the check itself fails, fall through to normal signIn
+      }
+
+      if (!emailExists) {
+        setError('no-account')
+        setIsLoading(false)
+        return
+      }
+
+      // Step 2: email exists — try signing in
       const result = await signIn('credentials', {
         email,
         password,
@@ -31,17 +52,12 @@ export default function SignInPage() {
       })
 
       if (result?.error) {
-        // Better error messages
-        if (result.error === 'CredentialsSignin') {
-          setError('No account found with this email. Would you like to create one?')
-        } else {
-          setError('Invalid email or password. Please check your credentials.')
-        }
+        setError('wrong-password')
       } else if (result?.ok) {
         router.push('/dashboard')
       }
     } catch (error) {
-      setError('Something went wrong. Please try again.')
+      setError('unknown')
     } finally {
       setIsLoading(false)
     }
@@ -135,19 +151,35 @@ export default function SignInPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 flex items-start gap-3"
+                className={`border rounded-lg p-4 flex items-start gap-3 ${
+                  error === 'no-account'
+                    ? 'bg-blue-500/20 border-blue-500/50'
+                    : 'bg-red-500/20 border-red-500/50'
+                }`}
               >
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${error === 'no-account' ? 'text-blue-400' : 'text-red-400'}`} />
                 <div>
-                  <p className="text-red-200 text-sm">{error}</p>
-                  {error.includes('No account found') && (
-                    <Link 
-                      href="/auth/signup" 
-                      className="text-yellow-300 hover:text-yellow-200 text-sm font-medium mt-2 inline-flex items-center gap-1"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Create Account Instead
-                    </Link>
+                  {error === 'no-account' && (
+                    <>
+                      <p className="text-blue-200 text-sm font-medium">No account found for <span className="font-bold">{email}</span>.</p>
+                      <p className="text-blue-300/80 text-xs mt-0.5">Want to join CineScope?</p>
+                      <Link
+                        href={`/auth/signup?email=${encodeURIComponent(email)}`}
+                        className="text-yellow-300 hover:text-yellow-200 text-sm font-semibold mt-2 inline-flex items-center gap-1"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        Create an account
+                      </Link>
+                    </>
+                  )}
+                  {error === 'wrong-password' && (
+                    <>
+                      <p className="text-red-200 text-sm font-medium">Incorrect password for <span className="font-bold">{email}</span>.</p>
+                      <p className="text-red-300/80 text-xs mt-0.5">Double-check your password and try again.</p>
+                    </>
+                  )}
+                  {error === 'unknown' && (
+                    <p className="text-red-200 text-sm">Something went wrong. Please try again.</p>
                   )}
                 </div>
               </motion.div>
