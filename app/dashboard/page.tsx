@@ -25,6 +25,7 @@ import {
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
+import DailyFactPopup from '@/app/components/DailyFactPopup'
 import { hybridAIEngine } from '@/lib/hybrid-ai-recommendation-engine'
 import { persistentStorage } from '@/lib/persistent-storage'
 
@@ -78,6 +79,13 @@ export default function Dashboard() {
       
       setIsLoading(false)
       loadAIPersonalizedRecommendations()
+
+      // Register this user with the social/friends system
+      fetch('/api/friends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'register', email: session?.user?.email, name: session?.user?.name }),
+      }).catch(() => {})
     }
   }, [status, router])
 
@@ -348,7 +356,7 @@ const handleRefreshAI = async () => {
       
       if (success) {
         showNotification(`✅ ${movie.title || movie.name || 'Movie'} added to watchlist!`, 'success')
-        
+
         // Update the button state visually
         const button = document.querySelector(`[data-movie-id="${movie.id}"] .watchlist-btn`)
         if (button) {
@@ -356,7 +364,22 @@ const handleRefreshAI = async () => {
           button.classList.add('bg-green-500', 'hover:bg-green-600')
           button.classList.remove('bg-blue-600', 'hover:bg-blue-700')
         }
-        
+
+        // Log activity to friends feed
+        fetch('/api/friends', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'activity',
+            userEmail,
+            name: session?.user?.name || userEmail,
+            verb: 'added',
+            title: movie.title || movie.name || 'Unknown',
+            mediaType: movie.media_type === 'tv' ? 'tv' : 'movie',
+            posterPath: movie.poster_path || null,
+          }),
+        }).catch(() => {})
+
         // Optional: Sync to server in background
         try {
           await fetch('/api/watchlist', {
@@ -574,6 +597,13 @@ const handleRefreshAI = async () => {
                     >
                       <User className="w-4 h-4" />
                       Favorite People
+                    </button>
+                    <button
+                      onClick={() => router.push('/discover')}
+                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Discover
                     </button>
                     <button
                       onClick={() => router.push('/social')}
@@ -1012,6 +1042,11 @@ const handleRefreshAI = async () => {
               </motion.div>
             </div>
           </section>
+        )}
+
+        {/* Daily Fact Popup — shows once per day, unique per user */}
+        {status === 'authenticated' && session?.user?.email && (
+          <DailyFactPopup userEmail={session.user.email} />
         )}
 
         {/* Empty State */}

@@ -87,6 +87,23 @@ export default function WatchlistPage() {
       persistentStorage.markAsToWatch(userEmail, movieId)
     } else {
       persistentStorage.markAsWatched(userEmail, movieId)
+      // Log to activity feed
+      const item = watchlist.find(m => m.movieId === movieId)
+      if (item) {
+        fetch('/api/friends', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'activity',
+            userEmail,
+            name: session?.user?.name || userEmail,
+            verb: 'watched',
+            title: item.title,
+            mediaType: item.media_type === 'tv' ? 'tv' : 'movie',
+            posterPath: item.poster_path || null,
+          }),
+        }).catch(() => {})
+      }
     }
     setWatchlist(persistentStorage.getWatchlist(userEmail))
   }
