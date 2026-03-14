@@ -79,7 +79,7 @@ interface YouTubeTrailerBackgroundProps {
 
 export default function YouTubeTrailerBackground({
   autoplay = true,
-  showControls = false, 
+  showControls = false,
   muted = true,
   loop = true,
   className = "",
@@ -89,6 +89,14 @@ export default function YouTubeTrailerBackground({
   const [isLoading, setIsLoading] = useState(true)
   const [isMuted, setIsMuted] = useState(muted)
   const [key, setKey] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Choose trailer list based on page
   const trailerList = isDashboard ? DASHBOARD_TRAILERS : AUTH_TRAILERS
@@ -151,15 +159,20 @@ export default function YouTubeTrailerBackground({
           key={`${currentTrailer.videoId}-${key}-${isMuted}`}
           src={buildYouTubeUrl(currentTrailer)}
           className="absolute pointer-events-none border-0 outline-0"
-          style={{
-            // "Object-fit: cover" for iframes.
-            // width = 177.78vh (= 100vh × 16/9) fills the full height and crops left/right.
-            // On portrait mobile this gives a YouTube-Shorts feel (fills screen top-to-bottom).
-            // On landscape desktop 177.78vh ≈ 100vw for 16:9 monitors, so it fills exactly.
-            // min-width/min-height are safety nets for unusual aspect ratios.
+          style={isMobile ? {
+            // Mobile: 75 % of screen height, centred — 12.5 % clear margin top & bottom
             top: '50%',
             left: '50%',
-            width: '177.78vh',
+            height: '75vh',
+            width: '133.33vh',   // 75vh × 16/9
+            minWidth: '100vw',
+            transform: 'translate(-50%, -50%)',
+            filter: 'brightness(0.7) contrast(1.1)'
+          } : {
+            // Desktop: full-viewport cover (crops left/right on wide screens)
+            top: '50%',
+            left: '50%',
+            width: '177.78vh',   // 100vh × 16/9
             height: '100vh',
             minWidth: '100vw',
             minHeight: '56.25vw',

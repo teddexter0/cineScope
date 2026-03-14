@@ -61,8 +61,13 @@ export async function GET(request: NextRequest) {
     const dateGteKey = type === 'tv' ? 'first_air_date.gte' : 'primary_release_date.gte'
     const dateLteKey = type === 'tv' ? 'first_air_date.lte' : 'primary_release_date.lte'
 
+    // TMDB TV uses first_air_date, not primary_release_date
+    const sortBy = type === 'tv'
+      ? sort.replace('primary_release_date', 'first_air_date')
+      : sort
+
     const params = new URLSearchParams({
-      sort_by: sort,
+      sort_by: sortBy,
       page,
       include_adult: 'false',
       'vote_count.gte': '50',
