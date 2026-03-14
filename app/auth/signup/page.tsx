@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -45,6 +45,8 @@ function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [validations, setValidations] = useState<Record<string, { isValid: boolean; message: string }>>({})
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
   const [success, setSuccess] = useState(false)
   const [mounted, setMounted] = useState(false)
   
@@ -61,24 +63,54 @@ function SignUpForm() {
     }
   }, [])
 
+  // Debounce ref for username availability check
+  const usernameDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const checkUsernameAvailability = async (username: string) => {
+    const result = validateUsername(username)
+    if (!result.isValid) { setUsernameAvailable(null); return }
+
+    setIsCheckingUsername(true)
+    try {
+      const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`)
+      const data = await res.json()
+      setUsernameAvailable(data.available)
+      if (!data.available) {
+        setValidations(prev => ({ ...prev, username: { isValid: false, message: 'Username is already taken' } }))
+      } else {
+        setValidations(prev => ({ ...prev, username: { isValid: true, message: 'Username is available' } }))
+      }
+    } catch {
+      setUsernameAvailable(null)
+    } finally {
+      setIsCheckingUsername(false)
+    }
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    
+
     let validation = { isValid: true, message: '' }
-    
+
     if (name === 'email') {
       validation = validateEmail(value)
     } else if (name === 'password') {
       validation = validatePassword(value)
     } else if (name === 'username') {
       validation = validateUsername(value)
+      // Reset availability and schedule debounced check
+      setUsernameAvailable(null)
+      if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
+      if (validation.isValid) {
+        usernameDebounceRef.current = setTimeout(() => checkUsernameAvailability(value), 400)
+      }
     } else if (name === 'name' && value.trim().length === 0) {
       validation = { isValid: false, message: 'Name is required' }
     }
-    
+
     setValidations(prev => ({ ...prev, [name]: validation }))
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
@@ -91,6 +123,8 @@ function SignUpForm() {
     
     const usernameValidation = validateUsername(formData.username)
     if (!usernameValidation.isValid) newErrors.username = usernameValidation.message
+    else if (usernameAvailable === false) newErrors.username = 'Username is already taken. Please choose a different one.'
+    else if (usernameAvailable === null && formData.username.length >= 3) newErrors.username = 'Please wait for username availability check'
     
     const emailValidation = validateEmail(formData.email)
     if (!emailValidation.isValid) newErrors.email = emailValidation.message
@@ -138,8 +172,11 @@ const handleSubmit = async (e: React.FormEvent) => {
       }, 2000) // Wait 2 seconds to show success message
       
     } else {
-      if (data.error.includes('already exists')) {
+      if (data.error?.includes('already exists')) {
         setErrors({ email: 'An account with this email already exists. Try signing in instead.' })
+      } else if (data.error?.includes('Username is already taken')) {
+        setErrors({ username: data.error })
+        setUsernameAvailable(false)
       } else {
         setErrors({ general: data.error || 'Registration failed' })
       }
@@ -268,6 +305,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <label htmlFor="username" className="block text-yellow-200 text-sm font-medium mb-2">
                   Username
                 </label>
+                <p className="text-white/40 text-xs mb-1.5">3–20 characters · letters, numbers, underscores only · no spaces · globally unique</p>
                 <div className="relative">
                   <input
                     id="username"
@@ -277,22 +315,27 @@ const handleSubmit = async (e: React.FormEvent) => {
                     onChange={handleChange}
                     className={`w-full bg-white/10 border rounded-lg px-4 py-3 pl-12 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
                       validations.username?.isValid === false ? 'border-red-400 focus:ring-red-400' :
-                      validations.username?.isValid ? 'border-green-400 focus:ring-green-400' :
+                      usernameAvailable === true ? 'border-green-400 focus:ring-green-400' :
                       'border-white/30 focus:ring-yellow-400'
                     }`}
-                    placeholder="Choose a username"
+                    placeholder="e.g. cinefan42"
                     disabled={isLoading}
                   />
                   <AtSign className="w-5 h-5 text-white/50 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                  {validations.username?.isValid && (
+                  {isCheckingUsername && (
+                    <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin absolute right-3 top-1/2 transform -translate-y-1/2" />
+                  )}
+                  {!isCheckingUsername && usernameAvailable === true && (
                     <CheckCircle className="w-5 h-5 text-green-400 absolute right-3 top-1/2 transform -translate-y-1/2" />
                   )}
                 </div>
                 {validations.username && (
                   <p className={`text-sm mt-1 flex items-center gap-1 ${
-                    validations.username.isValid ? 'text-green-400' : 'text-red-400'
+                    validations.username.isValid && usernameAvailable !== false ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {validations.username.isValid ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    {validations.username.isValid && usernameAvailable !== false
+                      ? <CheckCircle className="w-4 h-4" />
+                      : <AlertCircle className="w-4 h-4" />}
                     {validations.username.message}
                   </p>
                 )}
