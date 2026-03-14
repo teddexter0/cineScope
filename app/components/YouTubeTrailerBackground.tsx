@@ -152,15 +152,17 @@ export default function YouTubeTrailerBackground({
           src={buildYouTubeUrl(currentTrailer)}
           className="absolute pointer-events-none border-0 outline-0"
           style={{
-            // CSS "object-fit: cover" for iframes:
-            // Make the iframe large enough to fill the viewport in both dimensions.
-            // On portrait (mobile): height is the constraint → width = height × 16/9
-            // On landscape (desktop): width is the constraint → height = width × 9/16
-            // max() picks the larger of the two, so the video always over-fills and is centered.
+            // "Object-fit: cover" for iframes.
+            // width = 177.78vh (= 100vh × 16/9) fills the full height and crops left/right.
+            // On portrait mobile this gives a YouTube-Shorts feel (fills screen top-to-bottom).
+            // On landscape desktop 177.78vh ≈ 100vw for 16:9 monitors, so it fills exactly.
+            // min-width/min-height are safety nets for unusual aspect ratios.
             top: '50%',
             left: '50%',
-            width: 'max(100vw, calc(100vh * 16 / 9))',
-            height: 'max(100vh, calc(100vw * 9 / 16))',
+            width: '177.78vh',
+            height: '100vh',
+            minWidth: '100vw',
+            minHeight: '56.25vw',
             transform: 'translate(-50%, -50%)',
             filter: 'brightness(0.7) contrast(1.1)'
           }}

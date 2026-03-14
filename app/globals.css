@@ -296,24 +296,23 @@ header {
   color: #f97316 !important;
 }
 
-/* Mobile video centering fix */
-@media (max-width: 768px) {
-  .youtube-background iframe {
-    width: 100vw !important;
-    height: 56.25vw !important;
-    min-height: 100vh !important;
-    min-width: 177.78vh !important;
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) scale(1.2) !important;
-    object-fit: cover !important;
-  }
-  
-  /* Ensure content doesn't get cut off on mobile */
-  .content-overlay {
-    padding-bottom: 2rem !important;
-  }
+/* YouTube iframe cover fix — portrait (mobile Shorts feel) and landscape (desktop) */
+.youtube-background iframe,
+.youtube-background iframe {
+  /* width = 100vh * (16/9) fills height exactly and overflows width → cover */
+  width: 177.78vh !important;
+  height: 100vh !important;
+  min-width: 100vw !important;    /* safety: never narrower than screen */
+  min-height: 56.25vw !important; /* safety: never shorter than 16:9 of width */
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Ensure content doesn't get cut off on mobile */
+.content-overlay {
+  padding-bottom: 2rem !important;
 }
 /* Emergency styling overrides */
 body {

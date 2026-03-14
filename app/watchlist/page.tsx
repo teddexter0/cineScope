@@ -235,9 +235,9 @@ export default function WatchlistPage() {
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 text-white hover:text-purple-300 transition-colors"
+              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white/90 hover:text-white px-4 py-2 rounded-full text-sm font-medium transition-all"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
               Back to Dashboard
             </button>
           </div>
