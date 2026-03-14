@@ -122,9 +122,14 @@ export default function SignInPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-yellow-200 text-sm font-medium mb-2">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-yellow-200 text-sm font-medium">
+                  Password
+                </label>
+                <Link href="/auth/forgot-password" className="text-yellow-300/80 hover:text-yellow-200 text-xs transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="password"
@@ -175,7 +180,9 @@ export default function SignInPage() {
                   {error === 'wrong-password' && (
                     <>
                       <p className="text-red-200 text-sm font-medium">Incorrect password for <span className="font-bold">{email}</span>.</p>
-                      <p className="text-red-300/80 text-xs mt-0.5">Double-check your password and try again.</p>
+                      <p className="text-red-300/80 text-xs mt-0.5">Double-check your password and try again, or{' '}
+                        <Link href="/auth/forgot-password" className="text-yellow-300 hover:text-yellow-200 underline">reset it</Link>.
+                      </p>
                     </>
                   )}
                   {error === 'unknown' && (
