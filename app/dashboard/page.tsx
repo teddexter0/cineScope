@@ -2,17 +2,17 @@
 
 'use client'
  
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
-import { 
-  Film, 
-  Search, 
-  Star, 
-  Plus, 
-  ThumbsUp, 
-  Clock, 
+import {
+  Film,
+  Search,
+  Star,
+  Plus,
+  ThumbsUp,
+  Clock,
   TrendingUp,
   Sparkles,
   User,
@@ -20,7 +20,11 @@ import {
   LogOut,
   Brain,
   Zap,
-  Target
+  Target,
+  AtSign,
+  CheckCircle,
+  AlertCircle,
+  X
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -62,6 +66,13 @@ export default function Dashboard() {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showSearchResults, setShowSearchResults] = useState(false)
+
+  // Username change modal
+  const [showUsernameModal, setShowUsernameModal] = useState(false)
+  const [newUsername, setNewUsername] = useState('')
+  const [usernameStatus, setUsernameStatus] = useState<{ available?: boolean; checking?: boolean; error?: string; message?: string } | null>(null)
+  const [usernameQuota, setUsernameQuota] = useState<any>(null)
+  const [isSavingUsername, setIsSavingUsername] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -510,6 +521,55 @@ const handleRefreshAI = async () => {
     `)}`
   }
 
+  const openUsernameModal = async () => {
+    setShowUserMenu(false)
+    setNewUsername(session?.user?.username || '')
+    setUsernameStatus(null)
+    setShowUsernameModal(true)
+    // Fetch quota info
+    const res = await fetch('/api/auth/change-username')
+    if (res.ok) setUsernameQuota((await res.json()).quota)
+  }
+
+  const checkUsernameAvail = async (val: string) => {
+    if (!val || val.length < 3 || !/^[a-zA-Z0-9_]+$/.test(val)) return
+    setUsernameStatus({ checking: true })
+    const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(val)}`)
+    const data = await res.json()
+    setUsernameStatus({ available: data.available, message: data.available ? 'Available!' : 'Already taken' })
+  }
+
+  // Debounced username availability check
+  const usernameDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleUsernameInput = (val: string) => {
+    setNewUsername(val)
+    setUsernameStatus(null)
+    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
+    usernameDebounceRef.current = setTimeout(() => checkUsernameAvail(val), 400)
+  }
+
+  const saveUsername = async () => {
+    if (!newUsername || isSavingUsername) return
+    setIsSavingUsername(true)
+    try {
+      const res = await fetch('/api/auth/change-username', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newUsername }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setUsernameQuota(data.quota)
+        showNotification(`Username changed to @${data.username}`, 'success')
+        setShowUsernameModal(false)
+      } else {
+        setUsernameStatus({ error: data.error })
+      }
+    } finally {
+      setIsSavingUsername(false)
+    }
+  }
+
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-orange-900 to-yellow-600 flex items-center justify-center">
@@ -530,6 +590,60 @@ const handleRefreshAI = async () => {
           it truly fixed to the viewport on all screen sizes. */}
       {status === 'authenticated' && session?.user?.email && (
         <DailyFactPopup userEmail={session.user.email} />
+      )}
+
+      {/* Username Change Modal */}
+      {showUsernameModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowUsernameModal(false) }}>
+          <div className="bg-gray-950 border border-white/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-white font-bold text-lg flex items-center gap-2"><AtSign className="w-5 h-5 text-purple-400" /> Change Username</h2>
+              <button onClick={() => setShowUsernameModal(false)} className="text-white/40 hover:text-white/80"><X className="w-5 h-5" /></button>
+            </div>
+
+            {usernameQuota && (
+              <div className="mb-4 flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5 text-xs text-white/60">
+                <span>{usernameQuota.used}/{usernameQuota.max} changes used</span>
+                <span className="w-px h-4 bg-white/20" />
+                {usernameQuota.daysLeft > 0
+                  ? <span className="text-yellow-400">{usernameQuota.daysLeft}d cooldown remaining</span>
+                  : <span className="text-green-400">Ready to change</span>}
+              </div>
+            )}
+
+            <p className="text-white/50 text-xs mb-4">3–20 chars · letters, numbers, underscores only · globally unique · case-insensitive</p>
+
+            <div className="relative mb-1">
+              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <input
+                type="text"
+                value={newUsername}
+                onChange={e => handleUsernameInput(e.target.value)}
+                placeholder="new_username"
+                maxLength={20}
+                className="w-full bg-white/10 border border-white/20 rounded-lg pl-9 pr-4 py-2.5 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+              {usernameStatus?.checking && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />}
+              {usernameStatus?.available === true && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-400" />}
+              {usernameStatus?.available === false && <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />}
+            </div>
+            {usernameStatus?.message && (
+              <p className={`text-xs mt-1 mb-3 ${usernameStatus.available ? 'text-green-400' : 'text-red-400'}`}>{usernameStatus.message}</p>
+            )}
+            {usernameStatus?.error && <p className="text-xs mt-1 mb-3 text-red-400">{usernameStatus.error}</p>}
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowUsernameModal(false)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-2.5 rounded-xl text-sm font-medium transition-colors">Cancel</button>
+              <button
+                onClick={saveUsername}
+                disabled={isSavingUsername || !newUsername || newUsername.length < 3 || usernameStatus?.available === false || !usernameQuota?.canChange}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-white/30 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+              >
+                {isSavingUsername ? 'Saving…' : 'Save Username'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* YouTube Trailer Background - Dashboard Version */}
@@ -584,53 +698,61 @@ const handleRefreshAI = async () => {
                 </button>
                  
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white/10 backdrop-blur-lg rounded-lg border border-white/20 py-2">
+                  <div className="absolute right-0 mt-2 w-52 bg-gray-950/95 backdrop-blur-xl rounded-xl border border-white/10 py-1.5 shadow-2xl">
                     <button
                       onClick={() => router.push('/watchlist')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
                     >
                       <Clock className="w-4 h-4" />
                       My Watchlist
                     </button>
                     <button
                       onClick={() => router.push('/ratings')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
                     >
                       <Star className="w-4 h-4" />
                       My Ratings
                     </button>
                     <button
                       onClick={() => router.push('/people')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
                     >
                       <User className="w-4 h-4" />
                       Favorite People
                     </button>
                     <button
                       onClick={() => router.push('/discover')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
                     >
                       <Sparkles className="w-4 h-4" />
                       Discover
                     </button>
                     <button
                       onClick={() => router.push('/social')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
                     >
                       <User className="w-4 h-4" />
                       Social
                     </button>
                     <button
                       onClick={() => router.push('/onboarding')}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
                     >
                       <Brain className="w-4 h-4" />
                       Retrain AI
                     </button>
-                    <div className="border-t border-white/20 my-1"></div>
+                    <div className="border-t border-white/10 my-1"></div>
+                    <button
+                      onClick={openUsernameModal}
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
+                    >
+                      <AtSign className="w-4 h-4 text-purple-400" />
+                      Change Username
+                    </button>
+                    <div className="border-t border-white/10 my-1"></div>
                     <button
                       onClick={handleSignOut}
-                      className="w-full text-left px-4 py-2 text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 text-sm"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign Out

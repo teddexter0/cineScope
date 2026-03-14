@@ -137,8 +137,8 @@ export default function DiscoverPage() {
 
         {/* Header */}
         <div className="mb-6">
-          <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 text-white hover:text-purple-300 mb-4 transition-colors">
-            <ArrowLeft className="w-5 h-5" /> Back to Dashboard
+          <button onClick={() => router.push('/dashboard')} className="inline-flex items-center gap-2 bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/20 text-white/90 hover:text-white px-4 py-2 rounded-full text-sm font-medium transition-all mb-4">
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </button>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <Sparkles className="w-8 h-8 text-yellow-400" /> Discover
@@ -205,7 +205,7 @@ export default function DiscoverPage() {
               {openSections.type && (
                 <div className="px-4 pb-3 flex gap-2">
                   {(['movie', 'tv'] as MediaType[]).map(t => (
-                    <button key={t} onClick={() => { setMediaType(t); setSelectedGenre(null) }}
+                    <button key={t} onClick={() => { setMediaType(t); setSelectedGenre(null); if (t === 'tv') setSelectedDecade('') }}
                       className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${mediaType === t ? (t === 'movie' ? 'bg-blue-600 text-white' : 'bg-pink-600 text-white') : 'bg-white/10 text-white/60 hover:bg-white/15'}`}>
                       {t === 'movie' ? <Film className="w-3.5 h-3.5" /> : <Tv className="w-3.5 h-3.5" />}
                       {t === 'movie' ? 'Movies' : 'Series'}
