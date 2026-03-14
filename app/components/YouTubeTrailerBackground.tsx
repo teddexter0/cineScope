@@ -150,20 +150,18 @@ export default function YouTubeTrailerBackground({
         <iframe
           key={`${currentTrailer.videoId}-${key}-${isMuted}`}
           src={buildYouTubeUrl(currentTrailer)}
-          className="absolute inset-0 pointer-events-none border-0 outline-0"
+          className="absolute pointer-events-none border-0 outline-0"
           style={{
-            width: '100vw',
-            height: '100vh',
-            minWidth: '100vw',
-            minHeight: '100vh',
-            // MOBILE FIX: AGGRESSIVE SCALING FOR FULL COVERAGE
-            transform: typeof window !== 'undefined' && window.innerWidth < 768 
-              ? 'scale(2.5) translateY(-5%)' // MUCH MORE AGGRESSIVE - covers fully even if stretched
-              : typeof window !== 'undefined' && window.innerWidth < 1024 
-              ? 'scale(1.8)' // Tablet scaling
-              : 'scale(1.2)', // Desktop scaling
-            transformOrigin: 'center center',
-            objectFit: 'cover',
+            // CSS "object-fit: cover" for iframes:
+            // Make the iframe large enough to fill the viewport in both dimensions.
+            // On portrait (mobile): height is the constraint → width = height × 16/9
+            // On landscape (desktop): width is the constraint → height = width × 9/16
+            // max() picks the larger of the two, so the video always over-fills and is centered.
+            top: '50%',
+            left: '50%',
+            width: 'max(100vw, calc(100vh * 16 / 9))',
+            height: 'max(100vh, calc(100vw * 9 / 16))',
+            transform: 'translate(-50%, -50%)',
             filter: 'brightness(0.7) contrast(1.1)'
           }}
           frameBorder="0"
