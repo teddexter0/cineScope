@@ -2,7 +2,8 @@
 // Gracefully handles databases where the quota columns don't yet exist.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -34,12 +35,11 @@ async function fetchUser(email: string) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    // Use getToken (reads JWT directly) — works without passing authOptions
-    const token = await getToken({ req: request })
-    if (!token?.email) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
-    const email = token.email as string
+    const email = session.user.email
 
     const body = await request.json()
     const trimmed = ((body?.username) || '').trim()
@@ -105,10 +105,10 @@ export async function PATCH(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const token = await getToken({ req: request })
-    if (!token?.email) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const user = await fetchUser(token.email as string)
+    const user = await fetchUser(session.user.email)
     if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     let daysLeft = 0
