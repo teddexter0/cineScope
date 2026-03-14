@@ -686,18 +686,20 @@ const handleRefreshAI = async () => {
         </div>
       )}
 
-      {/* YouTube Trailer Background - Dashboard Version */}
-      <YouTubeTrailerBackground 
-        autoplay={true}
-        muted={true}
-        showControls={false}
-        loop={true}
-        isDashboard={true}
-        className="absolute inset-0 z-0"
-      />
+      {/* YouTube Trailer Background — same pattern as landing page */}
+      <div className="youtube-background">
+        <YouTubeTrailerBackground
+          autoplay={true}
+          muted={true}
+          showControls={false}
+          loop={true}
+          isDashboard={true}
+          className="w-full h-full"
+        />
+      </div>
 
       {/* Main Content Overlay */}
-      <div className="relative z-10 min-h-screen bg-black/30 backdrop-blur-[2px]">
+      <div className="relative z-10 min-h-screen">
         {/* Header */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
