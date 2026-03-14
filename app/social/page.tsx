@@ -297,7 +297,7 @@ export default function SocialPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm">
-                    <span className="font-semibold">{item.name}</span>
+                    <span className="font-semibold text-purple-300">@{item.username}</span>
                     <span className="text-white/60"> {item.action === 'watched' ? 'watched' : 'added to watchlist'}</span>
                   </p>
                   <p className="text-white font-medium text-sm truncate">"{item.title}"</p>

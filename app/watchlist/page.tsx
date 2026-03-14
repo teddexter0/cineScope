@@ -146,13 +146,10 @@ export default function WatchlistPage() {
     }).filter(item => item.title)
   }
 
-  const searchTmdbForTitle = async (title: string, year: string): Promise<any | null> => {
+  const searchTmdbForTitle = async (title: string, _year: string): Promise<any | null> => {
     try {
-      const query = encodeURIComponent(title)
-      const yearParam = year ? `&year=${year}` : ''
-      const res = await fetch(
-        `https://api.themoviedb.org/3/search/multi?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}${yearParam}&include_adult=false`
-      )
+      // Route through server-side API to avoid needing NEXT_PUBLIC_TMDB_API_KEY
+      const res = await fetch(`/api/movies/search?q=${encodeURIComponent(title)}&type=multi`)
       const data = await res.json()
       const result = (data.results || []).find((r: any) => r.poster_path && r.vote_average > 0)
       return result || null

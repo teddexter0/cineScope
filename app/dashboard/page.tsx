@@ -80,11 +80,11 @@ export default function Dashboard() {
       setIsLoading(false)
       loadAIPersonalizedRecommendations()
 
-      // Register this user with the social/friends system
+      // Register this user with the social/friends system (pass DB username so it's used in activity feed)
       fetch('/api/friends', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'register', email: session?.user?.email, name: session?.user?.name }),
+        body: JSON.stringify({ action: 'register', email: session?.user?.email, name: session?.user?.name, username: session?.user?.username || undefined }),
       }).catch(() => {})
     }
   }, [status, router])
@@ -524,6 +524,14 @@ const handleRefreshAI = async () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Daily Fact Popup — MUST be outside backdrop-blur containers.
+          CSS backdrop-filter creates a new containing block that breaks
+          fixed positioning, so rendering it here (before any blur) keeps
+          it truly fixed to the viewport on all screen sizes. */}
+      {status === 'authenticated' && session?.user?.email && (
+        <DailyFactPopup userEmail={session.user.email} />
+      )}
+
       {/* YouTube Trailer Background - Dashboard Version */}
       <YouTubeTrailerBackground 
         autoplay={true}
@@ -569,10 +577,10 @@ const handleRefreshAI = async () => {
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white px-3 py-2 md:px-4 md:py-2 rounded-lg hover:bg-white/20 transition-all"
+                  className="flex items-center gap-2 bg-black/50 border border-white/25 backdrop-blur-md text-white px-3 py-2 md:px-4 md:py-2 rounded-lg hover:bg-black/70 transition-all shadow-lg"
                 >
-                  <User className="w-4 h-4" />
-                  <span className="hidden md:inline">{session?.user?.name || 'User'}</span>
+                  <User className="w-4 h-4 text-yellow-300" />
+                  <span className="hidden md:inline text-sm font-medium">{session?.user?.name || 'User'}</span>
                 </button>
                  
                 {showUserMenu && (
@@ -1042,11 +1050,6 @@ const handleRefreshAI = async () => {
               </motion.div>
             </div>
           </section>
-        )}
-
-        {/* Daily Fact Popup — shows once per day, unique per user */}
-        {status === 'authenticated' && session?.user?.email && (
-          <DailyFactPopup userEmail={session.user.email} />
         )}
 
         {/* Empty State */}
