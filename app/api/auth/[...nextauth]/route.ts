@@ -73,12 +73,17 @@ const handler = NextAuth({
   },
   debug: process.env.NODE_ENV === "development",
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session: sessionData }: any) {
       if (user) {
+        // New login — populate token from the authorized user object
         token.id = user.id
         token.email = user.email
         token.name = user.name
         token.username = (user as any).username
+      }
+      // When client calls `update({ username })`, refresh token.username immediately
+      if (trigger === 'update' && sessionData?.username !== undefined) {
+        token.username = sessionData.username
       }
       return token
     },

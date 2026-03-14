@@ -160,14 +160,14 @@ export default function YouTubeTrailerBackground({
           src={buildYouTubeUrl(currentTrailer)}
           className="absolute pointer-events-none border-0 outline-0"
           style={isMobile ? {
-            // Mobile: 75 % of screen height, centred — 12.5 % clear margin top & bottom
+            // Mobile: 90 % of screen height, fixed centred background
             top: '50%',
             left: '50%',
-            height: '75vh',
-            width: '133.33vh',   // 75vh × 16/9
+            height: '90vh',
+            width: '160vh',      // 90vh × 16/9
             minWidth: '100vw',
             transform: 'translate(-50%, -50%)',
-            filter: 'brightness(0.7) contrast(1.1)'
+            filter: 'brightness(0.85) contrast(1.05)'
           } : {
             // Desktop: full-viewport cover (crops left/right on wide screens)
             top: '50%',
