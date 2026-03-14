@@ -221,10 +221,10 @@ export default function SocialPage() {
                     className="flex items-center justify-between bg-white/10 rounded-xl px-5 py-4 border border-white/20">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg">
-                        {(f.name || f.username)[0].toUpperCase()}
+                        {(f.username || f.name)[0].toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-white font-medium">{f.name}</p>
+                        <p className="text-white font-medium">{f.username || f.name}</p>
                         <p className="text-white/50 text-xs">@{f.username}</p>
                       </div>
                     </div>
@@ -257,10 +257,10 @@ export default function SocialPage() {
                   className={`flex items-center gap-4 rounded-xl px-5 py-4 border ${isMe ? 'bg-purple-500/20 border-purple-500/40' : 'bg-white/10 border-white/20'}`}>
                   <div className="text-2xl w-8 text-center">{medals[i] || `${i + 1}`}</div>
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {(entry.profile.name || entry.profile.username)[0].toUpperCase()}
+                    {(entry.profile.username || entry.profile.name)[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold">{entry.profile.name}{isMe && <span className="text-purple-300 text-xs ml-2">(you)</span>}</p>
+                    <p className="text-white font-semibold">{entry.profile.username || entry.profile.name}{isMe && <span className="text-purple-300 text-xs ml-2">(you)</span>}</p>
                     <p className="text-white/50 text-xs truncate">
                       {entry.count} {entry.count === 1 ? 'title' : 'titles'} this week
                       {entry.recentTitles.length > 0 && ` · ${entry.recentTitles.join(', ')}`}

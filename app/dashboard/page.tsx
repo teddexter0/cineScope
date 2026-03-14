@@ -64,7 +64,7 @@ function debounce(func: Function, wait: number) {
 }
 
 export default function Dashboard() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const router = useRouter()
   const [movies, setMovies] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -585,6 +585,14 @@ const handleRefreshAI = async () => {
         setUsernameQuota(data.quota)
         showNotification(`Username changed to @${data.username}`, 'success')
         setShowUsernameModal(false)
+        // Refresh the JWT session so social/leaderboard show the new username immediately
+        await updateSession({ username: data.username })
+        // Re-register with friends API so leaderboard picks up new username
+        fetch('/api/friends', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'register', email: session?.user?.email, name: session?.user?.name, username: data.username }),
+        }).catch(() => {})
       } else {
         setUsernameStatus({ error: data.error })
       }

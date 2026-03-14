@@ -296,24 +296,24 @@ header {
   color: #f97316 !important;
 }
 
-/* YouTube iframe — desktop: full-cover; mobile: 75vh centred with equal margins */
+/* YouTube iframe — desktop: full-cover; mobile: 90vh centred */
 .youtube-background iframe {
   position: absolute !important;
   top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
-  /* Desktop: fill viewport height, crop left/right (object-fit: cover for iframes) */
+  /* Desktop: fill viewport height, crop left/right */
   width: 177.78vh !important;    /* 100vh × 16/9 */
   height: 100vh !important;
   min-width: 100vw !important;
   min-height: 56.25vw !important;
 }
 
-/* Mobile: 75 % of screen height, centred — 12.5 % margin above & below */
+/* Mobile: 90 % of screen height, fixed centred background */
 @media (max-width: 767px) {
   .youtube-background iframe {
-    height: 75vh !important;
-    width: 133.33vh !important;   /* 75vh × 16/9 */
+    height: 90vh !important;
+    width: 160vh !important;      /* 90vh × 16/9 */
     min-width: 100vw !important;
     min-height: unset !important;
   }
