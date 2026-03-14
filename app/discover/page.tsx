@@ -205,7 +205,7 @@ export default function DiscoverPage() {
               {openSections.type && (
                 <div className="px-4 pb-3 flex gap-2">
                   {(['movie', 'tv'] as MediaType[]).map(t => (
-                    <button key={t} onClick={() => { setMediaType(t); setSelectedGenre(null); if (t === 'tv') setSelectedDecade('') }}
+                    <button key={t} onClick={() => { setMediaType(t); setSelectedGenre(null) }}
                       className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${mediaType === t ? (t === 'movie' ? 'bg-blue-600 text-white' : 'bg-pink-600 text-white') : 'bg-white/10 text-white/60 hover:bg-white/15'}`}>
                       {t === 'movie' ? <Film className="w-3.5 h-3.5" /> : <Tv className="w-3.5 h-3.5" />}
                       {t === 'movie' ? 'Movies' : 'Series'}
@@ -241,33 +241,31 @@ export default function DiscoverPage() {
               )}
             </div>
 
-            {/* Era (movies only) */}
-            {mediaType === 'movie' && (
-              <div className="border-b border-white/10">
-                <button onClick={() => toggleSection('era')}
-                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors">
-                  <span className="flex items-center gap-2">
-                    Era
-                    {selectedDecade && <span className="text-purple-400 font-normal text-xs">{selectedDecade}</span>}
-                  </span>
-                  {openSections.era ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
-                </button>
-                {openSections.era && (
-                  <div className="px-4 pb-3 flex flex-wrap gap-2">
-                    <button onClick={() => setSelectedDecade('')}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${!selectedDecade ? 'bg-purple-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
-                      All time
+            {/* Era — works for both Movies and Series */}
+            <div className="border-b border-white/10">
+              <button onClick={() => toggleSection('era')}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors">
+                <span className="flex items-center gap-2">
+                  Era
+                  {selectedDecade && <span className="text-purple-400 font-normal text-xs">{selectedDecade}</span>}
+                </span>
+                {openSections.era ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+              </button>
+              {openSections.era && (
+                <div className="px-4 pb-3 flex flex-wrap gap-2">
+                  <button onClick={() => setSelectedDecade('')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${!selectedDecade ? 'bg-purple-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
+                    All time
+                  </button>
+                  {DECADES.map(d => (
+                    <button key={d} onClick={() => setSelectedDecade(selectedDecade === d ? '' : d)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${selectedDecade === d ? 'bg-purple-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
+                      {d}
                     </button>
-                    {DECADES.map(d => (
-                      <button key={d} onClick={() => setSelectedDecade(selectedDecade === d ? '' : d)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${selectedDecade === d ? 'bg-purple-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Sort */}
             <div>
