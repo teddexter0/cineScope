@@ -24,7 +24,8 @@ import {
   AtSign,
   CheckCircle,
   AlertCircle,
-  X
+  X,
+  Heart
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -32,6 +33,22 @@ import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
 import DailyFactPopup from '@/app/components/DailyFactPopup'
 import { hybridAIEngine } from '@/lib/hybrid-ai-recommendation-engine'
 import { persistentStorage } from '@/lib/persistent-storage'
+
+// Genre list for Favorite Categories feature
+const GENRES = [
+  { id: '28',    name: 'Action',      emoji: '💥' },
+  { id: '35',    name: 'Comedy',      emoji: '😂' },
+  { id: '18',    name: 'Drama',       emoji: '🎭' },
+  { id: '27',    name: 'Horror',      emoji: '👻' },
+  { id: '878',   name: 'Sci-Fi',      emoji: '🚀' },
+  { id: '10749', name: 'Romance',     emoji: '❤️' },
+  { id: '53',    name: 'Thriller',    emoji: '🔪' },
+  { id: '14',    name: 'Fantasy',     emoji: '🧙' },
+  { id: '80',    name: 'Crime',       emoji: '🕵️' },
+  { id: '12',    name: 'Adventure',   emoji: '🗺️' },
+  { id: '99',    name: 'Documentary', emoji: '📽️' },
+  { id: '16',    name: 'Animation',   emoji: '🎨' },
+]
 
 // Debounce helper function
 function debounce(func: Function, wait: number) {
@@ -67,6 +84,9 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false)
   const [showSearchResults, setShowSearchResults] = useState(false)
 
+  // Favorite categories
+  const [favoriteCategories, setFavoriteCategories] = useState<string[]>([])
+
   // Username change modal
   const [showUsernameModal, setShowUsernameModal] = useState(false)
   const [newUsername, setNewUsername] = useState('')
@@ -89,6 +109,9 @@ export default function Dashboard() {
       }
       
       setIsLoading(false)
+      // Load persisted favorite categories
+      const email = session?.user?.email || ''
+      if (email) setFavoriteCategories(persistentStorage.getFavoriteCategories(email))
       loadAIPersonalizedRecommendations()
 
       // Register this user with the social/friends system (pass DB username so it's used in activity feed)
@@ -570,6 +593,15 @@ const handleRefreshAI = async () => {
     }
   }
 
+  const handleToggleCategory = (genreId: string) => {
+    const email = session?.user?.email || ''
+    if (!email) return
+    const added = persistentStorage.toggleFavoriteCategory(email, genreId)
+    setFavoriteCategories(persistentStorage.getFavoriteCategories(email))
+    const genre = GENRES.find(g => g.id === genreId)
+    if (genre) showNotification(added ? `${genre.emoji} ${genre.name} added to your favourites` : `Removed ${genre.name} from favourites`, added ? 'success' : 'error')
+  }
+
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-orange-900 to-yellow-600 flex items-center justify-center">
@@ -935,6 +967,66 @@ const handleRefreshAI = async () => {
                   </motion.div>
                 )}
               </div>
+            </motion.div>
+
+            {/* ── Favourite Categories ────────────────────────────── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="mb-10"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Heart className="w-4 h-4 text-pink-400 fill-pink-400" />
+                <h2 className="text-white font-semibold text-sm tracking-wide uppercase">Your Favourite Genres</h2>
+                {favoriteCategories.length > 0 && (
+                  <span className="text-xs text-white/40 ml-1">({favoriteCategories.length} pinned)</span>
+                )}
+              </div>
+
+              {/* Scrollable genre chips */}
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {[
+                  // Pinned genres first
+                  ...GENRES.filter(g => favoriteCategories.includes(g.id)),
+                  // Then the rest
+                  ...GENRES.filter(g => !favoriteCategories.includes(g.id)),
+                ].map(genre => {
+                  const isFav = favoriteCategories.includes(genre.id)
+                  return (
+                    <button
+                      key={genre.id}
+                      onClick={() => handleToggleCategory(genre.id)}
+                      title={isFav ? `Remove ${genre.name} from favourites` : `Pin ${genre.name} as a favourite`}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border ${
+                        isFav
+                          ? 'bg-gradient-to-r from-yellow-400/30 to-orange-400/30 border-yellow-400/60 text-yellow-200 shadow-[0_0_8px_rgba(250,204,21,0.25)]'
+                          : 'bg-white/10 border-white/15 text-white/70 hover:bg-white/20 hover:text-white'
+                      }`}
+                    >
+                      <span>{genre.emoji}</span>
+                      <span>{genre.name}</span>
+                      {isFav && <Heart className="w-3 h-3 fill-yellow-400 text-yellow-400 ml-0.5" />}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {favoriteCategories.length > 0 && (
+                <p className="text-white/35 text-xs mt-2">
+                  Tap a pinned genre to unpin it · Go to{' '}
+                  <button
+                    onClick={() => router.push('/discover')}
+                    className="underline text-white/50 hover:text-white/80 transition-colors"
+                  >
+                    Discover
+                  </button>{' '}
+                  to browse by genre
+                </p>
+              )}
+              {favoriteCategories.length === 0 && (
+                <p className="text-white/35 text-xs mt-2">Tap any genre above to pin it as a favourite</p>
+              )}
             </motion.div>
 
             {/* AI Stats Cards */}

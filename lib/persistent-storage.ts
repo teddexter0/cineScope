@@ -300,6 +300,43 @@ class PersistentStorage {
     }
   }
 
+  // FAVORITE CATEGORIES OPERATIONS
+  getFavoriteCategories(userEmail: string): string[] {
+    try {
+      if (typeof window === 'undefined') return []
+      const key = this.getUserKey(userEmail, 'favorite_categories')
+      const stored = localStorage.getItem(key)
+      return stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.error('Error reading favorite categories:', error)
+      return []
+    }
+  }
+
+  setFavoriteCategories(userEmail: string, categoryIds: string[]): void {
+    try {
+      if (typeof window === 'undefined') return
+      const key = this.getUserKey(userEmail, 'favorite_categories')
+      localStorage.setItem(key, JSON.stringify(categoryIds))
+    } catch (error) {
+      console.error('Error saving favorite categories:', error)
+    }
+  }
+
+  // Returns true if added, false if removed
+  toggleFavoriteCategory(userEmail: string, categoryId: string): boolean {
+    try {
+      const current = this.getFavoriteCategories(userEmail)
+      const exists = current.includes(categoryId)
+      const updated = exists ? current.filter(id => id !== categoryId) : [...current, categoryId]
+      this.setFavoriteCategories(userEmail, updated)
+      return !exists
+    } catch (error) {
+      console.error('Error toggling favorite category:', error)
+      return false
+    }
+  }
+
   // Get stats
   getUserStats(userEmail: string): any {
     const watchlist = this.getWatchlist(userEmail)
@@ -310,7 +347,7 @@ class PersistentStorage {
       watchlistCount: watchlist.length,
       ratingsCount: ratings.length,
       favoritePeopleCount: favoritePeople.length,
-      averageRating: ratings.length > 0 
+      averageRating: ratings.length > 0
         ? (ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / ratings.length).toFixed(1)
         : '0.0'
     }
@@ -319,8 +356,8 @@ class PersistentStorage {
   // DEBUGGING: Clear all data for user (useful for testing)
   clearUserData(userEmail: string): void {
     if (typeof window === 'undefined') return
-    
-    const types = ['watchlist', 'ratings', 'favorite_people']
+
+    const types = ['watchlist', 'ratings', 'favorite_people', 'favorite_categories']
     types.forEach(type => {
       const key = this.getUserKey(userEmail, type)
       localStorage.removeItem(key)
