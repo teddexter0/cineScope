@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already exists
+    // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
     })
@@ -31,14 +31,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check username uniqueness (case-insensitive) — industry standard
+    if (username) {
+      const existingUsername = await prisma.user.findFirst({
+        where: { username: { equals: username, mode: 'insensitive' } },
+        select: { id: true },
+      })
+      if (existingUsername) {
+        return NextResponse.json(
+          { error: 'Username is already taken. Please choose a different one.' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
+
+    // Normalise username to lowercase for consistent case-insensitive uniqueness
+    const normalizedUsername = username ? username.toLowerCase() : undefined
 
     // Create user in database
     const user = await prisma.user.create({
       data: {
         email,
-        username,
+        username: normalizedUsername,
         name,
         password: hashedPassword,
       }

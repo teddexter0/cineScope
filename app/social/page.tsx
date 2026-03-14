@@ -33,8 +33,9 @@ export default function SocialPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  const myEmail = session?.user?.email || ''
-  const myName  = session?.user?.name  || ''
+  const myEmail    = session?.user?.email    || ''
+  const myName     = session?.user?.name     || ''
+  const myUsername = session?.user?.username || ''
 
   // Register this user + load data when authenticated
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function SocialPage() {
     fetch('/api/friends', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'register', email: myEmail, name: myName }),
+      body: JSON.stringify({ action: 'register', email: myEmail, name: myName, username: myUsername || undefined }),
     }).then(() => loadAll())
   }, [status])
 

@@ -38,6 +38,7 @@ const handler = NextAuth({
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                username: user.username ?? undefined,
               }
             }
           }
@@ -77,6 +78,7 @@ const handler = NextAuth({
         token.id = user.id
         token.email = user.email
         token.name = user.name
+        token.username = (user as any).username
       }
       return token
     },
@@ -85,6 +87,7 @@ const handler = NextAuth({
         session.user.id = token.id as string
         session.user.email = token.email as string
         session.user.name = token.name as string
+        session.user.username = token.username as string | undefined
       }
       return session
     },
