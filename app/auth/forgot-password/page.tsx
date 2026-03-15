@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
 
-type Step = 'email' | 'password' | 'done'
+type Step = 'email' | 'inbox' | 'password' | 'done'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -47,8 +47,10 @@ export default function ForgotPasswordPage() {
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Something went wrong.')
+      } else if (data.emailSent) {
+        setStep('inbox')       // Resend path — email was sent
       } else {
-        setStep('password')
+        setStep('password')    // No email service — show password fields
       }
     } catch {
       setError('Network error. Please try again.')
@@ -96,9 +98,10 @@ export default function ForgotPasswordPage() {
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Reset Password</h1>
             <p className="text-yellow-200">
-              {step === 'email' && 'Enter the email on your account'}
+              {step === 'email'    && 'Enter the email on your account'}
+              {step === 'inbox'    && `Reset link sent to ${email}`}
               {step === 'password' && `Setting new password for ${email}`}
-              {step === 'done' && 'All done!'}
+              {step === 'done'     && 'All done!'}
             </p>
           </motion.div>
 
@@ -124,6 +127,23 @@ export default function ForgotPasswordPage() {
                 {error && <ErrorBox message={error} />}
                 <SubmitButton loading={isLoading} disabled={!email} label="Continue" />
               </form>
+            )}
+
+            {/* ── Step inbox: email sent (Resend path) ─────────────────── */}
+            {step === 'inbox' && (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-4">
+                <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto">
+                  <Mail className="w-8 h-8 text-yellow-400" />
+                </div>
+                <h3 className="text-white font-semibold text-lg">Check your inbox</h3>
+                <p className="text-white/60 text-sm">
+                  We sent a reset link to <span className="text-white font-medium">{email}</span>.
+                  It expires in 1 hour.
+                </p>
+                <p className="text-white/40 text-xs">Didn't get it? Check your spam folder or{' '}
+                  <button onClick={() => setStep('email')} className="text-yellow-300 hover:text-yellow-200 underline">try again</button>.
+                </p>
+              </motion.div>
             )}
 
             {/* ── Step 2: New password ──────────────────────────────────── */}

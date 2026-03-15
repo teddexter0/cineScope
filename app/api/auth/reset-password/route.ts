@@ -1,13 +1,36 @@
 // app/api/auth/reset-password/route.ts
-// Kept for backwards compatibility — the active reset flow now lives entirely
-// in /api/auth/forgot-password (2-step: check email → update password).
-// This route is no longer used but is left here to avoid 404s on any old links.
+// Used when RESEND_API_KEY is set — verifies the emailed HMAC token, then
+// updates the password. Same raw-SQL approach as the rest of the auth routes.
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+import { verifyResetToken } from '@/lib/reset-token'
 
-export async function POST() {
-  return NextResponse.json(
-    { error: 'This endpoint is deprecated. Please use /auth/forgot-password to reset your password.' },
-    { status: 410 }
-  )
+const prisma = new PrismaClient()
+
+export async function POST(request: NextRequest) {
+  try {
+    const { token, password } = await request.json()
+
+    if (!token || !password)
+      return NextResponse.json({ error: 'Token and password are required' }, { status: 400 })
+    if (password.length < 8)
+      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+
+    const payload = verifyResetToken(token)
+    if (!payload)
+      return NextResponse.json(
+        { error: 'Reset link has expired or is invalid. Please request a new one.' },
+        { status: 400 }
+      )
+
+    const hashed = await bcrypt.hash(password, 12)
+    await prisma.$executeRaw`UPDATE users SET password = ${hashed} WHERE email = ${payload.email}`
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    console.error('[reset-password]', err)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
 }
