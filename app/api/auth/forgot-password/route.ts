@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
           body: JSON.stringify({
-            from: 'CineScope <noreply@cine-scope-red.vercel.app>',
+            
+from: 'CineScope <onboarding@resend.dev>',
             to: [email],
             subject: 'Reset your CineScope password',
             html: `
