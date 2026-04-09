@@ -17,10 +17,16 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
-        try {
-          console.log('🔐 Attempting login for:', credentials.email)
-          const user = await prisma.user.findUnique({ where: { email: credentials.email } })
+  if (!credentials?.email || !credentials?.password) return null
+  
+  // Demo check FIRST — before any DB call
+  if (credentials.email === 'test@cinescope.com' && credentials.password === 'password123') {
+    return { id: 'demo-1', email: 'test@cinescope.com', name: 'Demo User' }
+  }
+
+  try {
+    console.log('🔐 Attempting login for:', credentials.email)
+    const user = await prisma.user.findUnique({ where: { email: credentials.email } })
           if (user && user.password) {
             const passwordMatch = await bcrypt.compare(credentials.password, user.password)
             if (passwordMatch) {

@@ -41,19 +41,27 @@ export async function POST(request: NextRequest) {
     const { email } = await request.json()
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
-    // Check user exists (raw SQL — avoids any generated-type issues)
-    const rows = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM users WHERE email = ${email.toLowerCase().trim()}
-    `
-    // Always return 200 to prevent email enumeration
-    if (!rows.length) {
+    const cleanEmail = email.toLowerCase().trim()
+
+    // Use Prisma model query instead of raw SQL
+    let userExists = false
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email: cleanEmail },
+        select: { id: true }
+      })
+      userExists = !!user
+    } catch {
+      // DB error — still return success to prevent enumeration
+    }
+
+    if (!userExists) {
       return NextResponse.json({ success: true, message: 'If that email is registered, a reset link has been sent.' })
     }
 
-    const token = makeResetToken(email.toLowerCase().trim())
+    const token = makeResetToken(cleanEmail)
     const resetUrl = `${BASE_URL}/auth/reset-password?token=${token}`
 
-    // ── Optional: send real email via Resend ───────────────────────────────
     const resendKey = process.env.RESEND_API_KEY
     if (resendKey) {
       try {
@@ -61,8 +69,7 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
           body: JSON.stringify({
-            
-from: 'CineScope <onboarding@resend.dev>',
+            from: 'CineScope <onboarding@resend.dev>',
             to: [email],
             subject: 'Reset your CineScope password',
             html: `
@@ -72,20 +79,18 @@ from: 'CineScope <onboarding@resend.dev>',
                 <p style="color:#ccc;margin-bottom:24px;">Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
                 <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(to right,#facc15,#f97316);color:#1e1b4b;font-weight:bold;padding:14px 28px;border-radius:8px;text-decoration:none;margin-bottom:24px;">Reset Password</a>
                 <p style="color:#999;font-size:12px;">If you didn't request this, you can safely ignore this email.</p>
-                <p style="color:#666;font-size:11px;margin-top:16px;word-break:break-all;">${resetUrl}</p>
               </div>
             `,
           }),
         })
-      } catch { /* email send failure is non-fatal */ }
+      } catch { /* non-fatal */ }
       return NextResponse.json({ success: true, message: 'If that email is registered, a reset link has been sent.' })
     }
 
-    // ── No email service: return the link directly (demo/dev mode) ─────────
     return NextResponse.json({
       success: true,
       message: 'No email service configured — use the reset link below.',
-      resetLink: resetUrl,        // shown in the UI so the flow still works
+      resetLink: resetUrl,
       expiresInMinutes: 60,
     })
   } catch (err: any) {
