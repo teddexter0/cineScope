@@ -19,16 +19,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ exists: true })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true }, // only need to know it exists
-    })
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      })
+      // Explicitly return false when user is not found
+      return NextResponse.json({ exists: !!user })
+    } catch (dbError) {
+      // FIXED: Don't silently return exists:true on DB errors.
+      // Return a specific error so the signin page can fall through to
+      // normal signIn() rather than showing a misleading "account not found".
+      console.error('check-email DB error:', dbError)
+      return NextResponse.json({ exists: null, dbError: true })
+    }
 
-    return NextResponse.json({ exists: !!user })
   } catch (error) {
     console.error('check-email error:', error)
-    // On DB error, return exists:true so we fall through to normal signIn
-    // (better to show "wrong password" than a confusing error)
-    return NextResponse.json({ exists: true })
+    return NextResponse.json({ exists: null, dbError: true })
   }
 }
