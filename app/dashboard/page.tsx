@@ -79,8 +79,9 @@ export default function Dashboard() {
     accuracy: 95,
     discovered: 0,
     timeSaved: 12
-  })
-const [userRatings, setUserRatings] = useState<Record<string, number>>({})
+  }) 
+const [userRatings, setUserRatings]   = useState<Record<string, number>>({})
+const [showTourButton, setShowTourButton] = useState(false)
   // Search functionality
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -443,30 +444,25 @@ const handleRefreshAI = async () => {
   }
 
   // RATING FUNCTIONALITY - USING PERSISTENT STORAGE
-  const handleLikeMovie = async (
-  movie: any,
-  rating?: number,
-  review?: string) => {
+
+  const handleLikeMovie = async (movie: any, rating: number, review: string) => {
   try {
     const userEmail = session?.user?.email || 'demo@user.com'
     const ratingData = {
       movieId: movie.id,
-      title: movie.title || movie.name || movie.displayTitle || 'Unknown Movie',
+      title: movie.title || movie.name || movie.displayTitle || 'Unknown',
       poster_path: movie.poster_path,
       vote_average: movie.vote_average,
       release_date: movie.release_date || movie.first_air_date,
       rating,
-      review,
+      review: review || '',
       media_type: movie.media_type || 'movie',
     }
-    const success = persistentStorage.addRating(userEmail, ratingData)
-    if (success) {
+    const ok = persistentStorage.addRating(userEmail, ratingData)
+    if (ok) {
       setUserRatings(prev => ({ ...prev, [movie.id]: rating }))
       showNotification(`Rated "${ratingData.title}" ${rating}/10 ⭐`, 'success')
-      setRecommendationStats(prev => ({
-        ...prev,
-        accuracy: Math.min(99, prev.accuracy + 1),
-      }))
+      setRecommendationStats(prev => ({ ...prev, accuracy: Math.min(99, prev.accuracy + 1) }))
       try {
         await fetch('/api/movies/rate', {
           method: 'POST',
@@ -475,9 +471,7 @@ const handleRefreshAI = async () => {
         })
       } catch {}
     }
-  } catch (error) {
-    console.error('Rating error:', error)
-  }
+  } catch (err) { console.error(err) }
 }
   // NOTIFICATION SYSTEM
   const showNotification = (message: string, type: 'success' | 'error') => {
@@ -587,13 +581,19 @@ const handleRefreshAI = async () => {
   }
 
   const handleToggleCategory = (genreId: string) => {
-    const email = session?.user?.email || ''
-    if (!email) return
-    const added = persistentStorage.toggleFavoriteCategory(email, genreId)
-    setFavoriteCategories(persistentStorage.getFavoriteCategories(email))
-    const genre = GENRES.find(g => g.id === genreId)
-    if (genre) showNotification(added ? `${genre.emoji} ${genre.name} added to your favourites` : `Removed ${genre.name} from favourites`, added ? 'success' : 'error')
-  }
+  const email = session?.user?.email || ''
+  if (!email) return
+  const added = persistentStorage.toggleFavoriteCategory(email, genreId)
+  const updated = persistentStorage.getFavoriteCategories(email)
+  setFavoriteCategories(updated)
+  const genre = GENRES.find(g => g.id === genreId)
+  if (genre) showNotification(
+    added ? `${genre.emoji} ${genre.name} pinned — refreshing recs…` : `Removed ${genre.name}`,
+    added ? 'success' : 'error'
+  )
+  // Re-run recommendations biased toward pinned genres
+  if (added) loadAIPersonalizedRecommendations()
+}
 
   if (status === 'loading' || isLoading) {
     return (
@@ -617,7 +617,8 @@ const handleRefreshAI = async () => {
         <DailyFactPopup userEmail={session.user.email} />
       )}
 
-{status === 'authenticated' && <OnboardingTour />}
+      {status === 'authenticated' && <OnboardingTour onReady={() => setShowTourButton(true)} />}
+
       {/* Username Change Modal */}
       {showUsernameModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowUsernameModal(false) }}>
@@ -708,15 +709,26 @@ const handleRefreshAI = async () => {
             
             <nav className="flex items-center gap-2 md:gap-4">
               <button
+                data-tour="refresh-ai" 
                 onClick={handleRefreshAI}
                 disabled={isLoadingRecommendations}
-                data-tour="refresh-ai" 
                 className="flex items-center gap-2 bg-purple-500/20 backdrop-blur-sm text-purple-200 px-3 py-2 rounded-lg hover:bg-purple-500/30 transition-all disabled:opacity-50"
               >
                 <Zap className="w-4 h-4" />
                 <span className="hidden md:inline">{isLoadingRecommendations ? 'AI Thinking...' : 'Refresh AI'}</span>
               </button>
-              
+              {showTourButton && (
+  <button
+    onClick={() => {
+      localStorage.removeItem('cinescope_tour_done_v1')
+      window.location.reload()
+    }}
+    className="hidden md:flex items-center gap-2 bg-yellow-400/10 backdrop-blur-sm text-yellow-200 px-3 py-2 rounded-lg hover:bg-yellow-400/20 transition-all text-sm"
+  >
+    <span>?</span>
+    Tour
+  </button>
+)}
               <div className="relative">
                 <button
                 data-tour="user-menu"
@@ -984,131 +996,24 @@ const handleRefreshAI = async () => {
               >
                 {movies.map((movie, index) => (
                   <motion.div
-                    key={movie.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 + index * 0.1 }}
-                    className="group cursor-pointer"
-                  >
-                    <div className="bg-white/5 backdrop-blur-sm rounded-lg overflow-hidden border border-white/10 hover:border-yellow-400/50 transition-all duration-300 hover:scale-105 relative">
-                      {/* AI Score Badge */}
-                      {movie.aiScore && (
-                        <div className="absolute top-2 left-2 z-10 bg-purple-500/90 backdrop-blur-sm px-2 py-1 rounded-full">
-                          <span className="text-white text-xs font-bold">
-                            🤖 {Math.round(movie.aiScore)}
-                          </span>
-                        </div>
-                      )}
-                      
-                      <div className="aspect-[2/3] relative overflow-hidden">
-                        <Image
-                          src={getPosterUrl(movie.poster_path)}
-                          alt={movie.title}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-300"
-                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 16vw"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        
-                        {/* Hover Info */}
-                        <div className="absolute bottom-0 left-0 right-0 p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <p className="text-xs line-clamp-3">{movie.overview}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="p-3">
-                        <h3 className="text-white font-medium text-sm mb-1 line-clamp-2">
-                          {movie.displayTitle || movie.title || movie.name}
-                          {movie.media_type === 'tv' && <span className="text-xs text-blue-300 ml-1">(Series)</span>}
-                        </h3>
-                        
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                            <span className="text-white/70 text-xs">{movie.vote_average?.toFixed(1)}</span>
-                          </div>
-                          <span className="text-white/50 text-xs">
-                            {new Date(movie.release_date).getFullYear()}
-                          </span>
-                        </div>
-
-                        <div className="flex gap-1 md:gap-2" data-movie-id={movie.id}>
-                          <button 
-                            onClick={() => handleLikeMovie(movie)}
-                            className="like-btn flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-blue-900 py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
-                            title="Love this AI pick!"
-                          >
-                            🤖👍
-                          </button>
-                          <button 
-                            onClick={() => handleAddToWatchlist(movie)}
-                            className="watchlist-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-1 md:px-2 rounded text-xs font-bold transition-all shadow-lg"
-                            title="Add to watchlist"
-                          >
-                            ➕
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
+  initial={{ opacity: 0, y: 30 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.8 }}
+  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4"
+  data-tour="ai-recs"
+>
+  {movies.map((movie, index) => (
+    <MovieCard
+      key={movie.id}
+      movie={movie}
+      index={index}
+      onWatchlist={handleAddToWatchlist}
+      onRate={(m, rating, review) => handleLikeMovie(m, rating, review)}
+      existingRating={userRatings[movie.id]}
+    />
+  ))}
+</motion.div>
                 ))}
-              </motion.div>
-
-              {/* AI Insight Box */}
-              {aiInsight && (
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.2 }}
-                  className="mt-12 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-lg rounded-xl p-6 border border-white/20"
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-purple-400/20 rounded-lg flex items-center justify-center">
-                      <Brain className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <h3 className="text-white font-semibold text-lg">🧠 AI Personality Insight</h3>
-                  </div>
-                  <p className="text-white/80 leading-relaxed">
-                    {aiInsight}
-                  </p>
-                  
-                  {userProfile && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <div className="bg-purple-500/20 px-3 py-1 rounded-full">
-                        <span className="text-purple-200 text-sm">Personality: {userProfile.personalityType}</span>
-                      </div>
-                      {userProfile.moodPreferences?.slice(0, 2).map((mood: string, index: number) => (
-                        <div key={index} className="bg-blue-500/20 px-3 py-1 rounded-full">
-                          <span className="text-blue-200 text-sm">Mood: {mood}</span>
-                        </div>
-                      ))}
-                      <div className="bg-green-500/20 px-3 py-1 rounded-full">
-                        <span className="text-green-200 text-sm">
-                          Complexity: {userProfile.complexityLevel > 0.7 ? 'High' : userProfile.complexityLevel > 0.4 ? 'Medium' : 'Light'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Improve AI Button */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.4 }}
-                className="mt-8 text-center"
-              >
-                <button
-                  onClick={() => router.push('/onboarding')}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 mx-auto"
-                >
-                  <Brain className="w-5 h-5" />
-                  Retrain AI with More Data
-                </button>
-                <p className="text-white/60 text-sm mt-2">
-                  Help your AI learn even more about your taste
-                </p>
               </motion.div>
             </div>
           </section>
