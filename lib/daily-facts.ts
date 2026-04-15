@@ -110,39 +110,48 @@ export interface DailyFactState {
   isNew: boolean // true if not yet shown today
 }
 
+ 
 export function getDailyFact(userEmail: string): DailyFactState {
   if (typeof window === 'undefined') return { fact: CINE_FACTS[0], isNew: false }
-
-  const today = new Date().toISOString().slice(0, 10) // "2026-03-13"
-  const seenKey = `${STORAGE_KEY_PREFIX}seen_${userEmail.replace(/[^a-z0-9]/gi, '_')}`
-  const dateKey = `${STORAGE_KEY_PREFIX}date_${userEmail.replace(/[^a-z0-9]/gi, '_')}`
-
-  const lastDate = localStorage.getItem(dateKey) || ''
+ 
+  const today = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
+  const slug  = userEmail.replace(/[^a-z0-9]/gi, '_')
+ 
+  const seenKey = `${STORAGE_KEY_PREFIX}seen_${slug}`
+  const dateKey = `${STORAGE_KEY_PREFIX}date_${slug}`
+  const factKey = `${STORAGE_KEY_PREFIX}fact_${slug}`  // ← NEW: caches today's chosen id
+ 
+  const storedDate   = localStorage.getItem(dateKey)   || ''
+  const storedFactId = localStorage.getItem(factKey)
+ 
+  // ── Same calendar day — DO NOT re-show popup ─────────────────────────────
+  if (storedDate === today && storedFactId) {
+    const fact = CINE_FACTS.find(f => f.id === Number(storedFactId)) ?? CINE_FACTS[0]
+    return { fact, isNew: false }
+  }
+ 
+  // ── New day — pick next unseen fact ──────────────────────────────────────
   const seenRaw = localStorage.getItem(seenKey) || '[]'
   let seenIds: number[] = JSON.parse(seenRaw)
-
-  // Pick a candidate: user+date hash over unseen facts
+ 
   const allIds = CINE_FACTS.map(f => f.id)
-  const unseenIds = allIds.filter(id => !seenIds.includes(id))
-
-  // If all seen, reset
-  const poolIds = unseenIds.length > 0 ? unseenIds : allIds
-  if (unseenIds.length === 0) {
+  let pool     = allIds.filter(id => !seenIds.includes(id))
+ 
+  // All 80 seen → start fresh cycle
+  if (pool.length === 0) {
     seenIds = []
+    pool    = allIds
   }
-
-  const seed = simpleHash(userEmail + today)
-  const chosenId = poolIds[seed % poolIds.length]
-  const fact = CINE_FACTS.find(f => f.id === chosenId) ?? CINE_FACTS[0]
-
-  const isNew = lastDate !== today
-
-  if (isNew) {
-    // Record as shown today
-    if (!seenIds.includes(fact.id)) seenIds.push(fact.id)
-    localStorage.setItem(seenKey, JSON.stringify(seenIds))
-    localStorage.setItem(dateKey, today)
-  }
-
-  return { fact, isNew }
+ 
+  const seed    = simpleHash(userEmail + today)
+  const chosen  = pool[seed % pool.length]
+  const fact    = CINE_FACTS.find(f => f.id === chosen) ?? CINE_FACTS[0]
+ 
+  // Commit
+  seenIds.push(fact.id)
+  localStorage.setItem(seenKey, JSON.stringify(seenIds))
+  localStorage.setItem(dateKey, today)
+  localStorage.setItem(factKey, String(fact.id))
+ 
+  return { fact, isNew: true }
 }

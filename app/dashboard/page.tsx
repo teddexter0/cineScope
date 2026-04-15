@@ -6,6 +6,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
+import MovieCard from '@/app/components/MovieCard'
+import OnboardingTour from '@/app/components/OnboardingTour'
 import {
   Film,
   Search,
@@ -78,7 +80,7 @@ export default function Dashboard() {
     discovered: 0,
     timeSaved: 12
   })
-
+const [userRatings, setUserRatings] = useState<Record<string, number>>({})
   // Search functionality
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -441,59 +443,42 @@ const handleRefreshAI = async () => {
   }
 
   // RATING FUNCTIONALITY - USING PERSISTENT STORAGE
-  const handleLikeMovie = async (movie: any) => {
-    try {
-      const userEmail = session?.user?.email || 'demo@user.com'
-      console.log('👍 Liking movie:', movie.title || movie.name || movie.displayTitle || 'Unknown Movie')
-      
-      const ratingData = {
-        movieId: movie.id,
-        title: movie.title || movie.name || movie.displayTitle || 'Unknown Movie',
-        poster_path: movie.poster_path,
-        vote_average: movie.vote_average,
-        release_date: movie.release_date || movie.first_air_date,
-        rating: 8.5,
-        review: `Loved this AI recommendation! 🤖 ${movie.title || movie.name || movie.displayTitle || 'This content'} was exactly what I was looking for.`,
-        media_type: movie.media_type || 'movie'
-      }
-      
-      // Use persistent storage for immediate response
-      const success = persistentStorage.addRating(userEmail, ratingData)
-      
-      if (success) {
-        showNotification(`💖 Loved ${movie.title || movie.name || movie.displayTitle || 'this content'}! Check your ratings page to see it.`, 'success')
-        
-        // Update accuracy when user likes recommendations
-        setRecommendationStats(prev => ({
-          ...prev,
-          accuracy: Math.min(99, prev.accuracy + 1)
-        }))
-        
-        // Update the button state visually
-        const button = document.querySelector(`[data-movie-id="${movie.id}"] .like-btn`)
-        if (button) {
-          button.textContent = '💖 Loved'
-          button.classList.add('bg-pink-500', 'hover:bg-pink-600')
-          button.classList.remove('bg-gradient-to-r', 'from-yellow-400', 'to-orange-500')
-        }
-        
-        // Optional: Sync to server in background
-        try {
-          await fetch('/api/movies/rate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ratingData)
-          })
-        } catch (apiError) {
-          console.log('📡 Background rating sync failed (not critical):', apiError)
-        }
-      }
-    } catch (error) {
-      console.error('❌ Like error:', error)
-      showNotification(`❌ Network error liking ${movie.title || movie.name || movie.displayTitle || 'content'}. Please try again.`, 'error')
+  const handleLikeMovie = async (
+  movie: any,
+  rating?: number,
+  review?: string) => {
+  try {
+    const userEmail = session?.user?.email || 'demo@user.com'
+    const ratingData = {
+      movieId: movie.id,
+      title: movie.title || movie.name || movie.displayTitle || 'Unknown Movie',
+      poster_path: movie.poster_path,
+      vote_average: movie.vote_average,
+      release_date: movie.release_date || movie.first_air_date,
+      rating,
+      review,
+      media_type: movie.media_type || 'movie',
     }
+    const success = persistentStorage.addRating(userEmail, ratingData)
+    if (success) {
+      setUserRatings(prev => ({ ...prev, [movie.id]: rating }))
+      showNotification(`Rated "${ratingData.title}" ${rating}/10 ⭐`, 'success')
+      setRecommendationStats(prev => ({
+        ...prev,
+        accuracy: Math.min(99, prev.accuracy + 1),
+      }))
+      try {
+        await fetch('/api/movies/rate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ratingData),
+        })
+      } catch {}
+    }
+  } catch (error) {
+    console.error('Rating error:', error)
   }
-
+}
   // NOTIFICATION SYSTEM
   const showNotification = (message: string, type: 'success' | 'error') => {
     const existingNotifications = document.querySelectorAll('.notification')
@@ -632,6 +617,7 @@ const handleRefreshAI = async () => {
         <DailyFactPopup userEmail={session.user.email} />
       )}
 
+{status === 'authenticated' && <OnboardingTour />}
       {/* Username Change Modal */}
       {showUsernameModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowUsernameModal(false) }}>
@@ -724,6 +710,7 @@ const handleRefreshAI = async () => {
               <button
                 onClick={handleRefreshAI}
                 disabled={isLoadingRecommendations}
+                data-tour="refresh-ai" 
                 className="flex items-center gap-2 bg-purple-500/20 backdrop-blur-sm text-purple-200 px-3 py-2 rounded-lg hover:bg-purple-500/30 transition-all disabled:opacity-50"
               >
                 <Zap className="w-4 h-4" />
@@ -732,6 +719,7 @@ const handleRefreshAI = async () => {
               
               <div className="relative">
                 <button
+                data-tour="user-menu"
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 bg-black/50 border border-white/25 backdrop-blur-md text-white px-3 py-2 md:px-4 md:py-2 rounded-lg hover:bg-black/70 transition-all shadow-lg"
                 >
@@ -809,175 +797,25 @@ const handleRefreshAI = async () => {
         {/* Hero Section */}
         <section className="relative px-4 py-10 md:px-6 md:py-20">
           <div className="max-w-7xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-center mb-12"
-            >
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
-                Welcome Back,
-                <br />
-                <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-                  {session?.user?.name?.split(' ')[0] || 'Movie Lover'}
-                </span>
-              </h1>
-              
-              <p className="text-lg md:text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed drop-shadow-md">
-                {isLoadingRecommendations ? (
-                  <>🧠 AI is analyzing your personality and curating perfect matches...</>
-                ) : (
-                  <>Your AI has analyzed your taste and found perfect matches. These recommendations are personally crafted for you.</>
-                )}
-              </p>
- 
-              {/* IMPROVED Search Bar with Live Results */}
-              <div className="max-w-2xl mx-auto mb-8 relative">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      const query = e.target.value
-                      setSearchQuery(query)
-                      debouncedSearch(query)
-                    }}
-                    placeholder="Search movies, TV shows, actors, directors..."
-                    className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-12 py-4 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                  />
-                  {isSearching && (
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                      <div className="w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  )}
-                </div>
-                
-                
-{/* FIXED Search Results Dropdown */}
-{showSearchResults && searchResults.length > 0 && (
-  <motion.div
-    initial={{ opacity: 0, y: -10 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 max-h-96 overflow-y-auto z-50"
-  >
-    <div className="p-4">
-      <h3 className="text-white font-medium mb-3">Search Results</h3>
-      <div className="space-y-2">
-        {searchResults.map((result, index) => (
-          <div
-            key={result.id}
-            className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-            onClick={() => {
-              // Only add movies/TV to main view, not people
-              if (result.media_type === 'movie' || result.media_type === 'tv' || !result.media_type) {
-                setMovies(prev => [result, ...prev.slice(0, 11)])
-                setShowSearchResults(false)
-                setSearchQuery('')
-              }
-            }}
-          >
-            {/* Image */}
-            <div className="w-12 h-16 bg-gray-600 rounded overflow-hidden flex-shrink-0">
-              {(result.poster_path || result.profile_path) ? (
-                <Image
-                  src={`https://image.tmdb.org/t/p/w92${result.poster_path || result.profile_path}`}
-                  alt={result.title || result.name}
-                  width={48}
-                  height={64}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs">
-                  {result.media_type === 'person' ? '👤' : result.media_type === 'tv' ? '📺' : '🎬'}
-                </div>
-              )}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <h4 className="text-white font-medium truncate">
-                {result.title || result.name}
-              </h4>
-              <div className="flex items-center gap-2 text-sm text-white/60">
-                <span className="capitalize">
-                  {result.media_type === 'movie' ? 'Movie' : 
-                   result.media_type === 'person' ? 'Person' : 
-                   result.media_type === 'tv' ? 'TV Show' : 'Movie'}
-                </span>
-                {(result.release_date || result.first_air_date) && (
-                  <>
-                    <span>•</span>
-                    <span>{new Date(result.release_date || result.first_air_date).getFullYear()}</span>
-                  </>
-                )}
-                {result.vote_average > 0 && (
-                  <>
-                    <span>•</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                      <span>{result.vote_average.toFixed(1)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              {result.known_for && result.known_for.length > 0 && (
-                <p className="text-xs text-white/50 truncate">
-                  Known for: {result.known_for.slice(0, 2).map((item: any) => item.title || item.name).join(', ')}
-                </p>
-              )}
-              {result.known_for_department && (
-                <p className="text-xs text-white/50">
-                  {result.known_for_department}
-                </p>
-              )}
-            </div>
-
-            {/* FIXED: Action Button with proper person handling */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                console.log('🔍 Search result clicked:', result.media_type, result.name || result.title)
-                
-                if (result.media_type === 'person') {
-                  // FIXED: Use the function we defined above
-                  handleAddPersonToFavorites(result)
-                } else if (result.media_type === 'movie' || result.media_type === 'tv' || !result.media_type) {
-                  handleAddToWatchlist(result)
-                }
-              }}
-              className={`p-2 rounded-lg transition-colors ${
-                result.media_type === 'person' 
-                  ? 'bg-blue-400/20 hover:bg-blue-400/30 text-blue-300' 
-                  : 'bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300'
-              }`}
-              title={result.media_type === 'person' ? 'Add to favorite people' : 'Add to watchlist'}
-            >
-              {result.media_type === 'person' ? (
-                <User className="w-4 h-4" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  </motion.div>
-)}
-
-                {/* No Results */}
-                {showSearchResults && searchResults.length === 0 && searchQuery.length > 1 && !isSearching && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl rounded-xl border border-white/20 p-4 z-50"
-                  >
-                    <p className="text-white/60 text-center">No results found for "{searchQuery}"</p>
-                  </motion.div>
-                )}
-              </div>
-            </motion.div>
+            
+<motion.div
+  initial={{ opacity: 0, y: 30 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.8 }}
+  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4"
+  data-tour="ai-recs"
+>
+  {movies.map((movie, index) => (
+    <MovieCard
+      key={movie.id}
+      movie={movie}
+      index={index}
+      onWatchlist={handleAddToWatchlist}
+      onRate={(m, rating, review) => handleLikeMovie(m, rating, review)}
+      existingRating={userRatings[movie.id]}
+    />
+  ))}
+</motion.div>
 
             {/* ── Favourite Categories ────────────────────────────── */}
             <motion.div
