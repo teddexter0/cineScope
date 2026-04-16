@@ -9,19 +9,20 @@ const prisma = new PrismaClient()
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json()
+    const normalizedEmail = String(email || '').toLowerCase().trim()
 
-    if (!email) {
+    if (!normalizedEmail) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 })
     }
 
     // Demo account bypass
-    if (email === 'test@cinescope.com') {
+    if (normalizedEmail === 'test@cinescope.com') {
       return NextResponse.json({ exists: true })
     }
 
     try {
       const user = await prisma.user.findUnique({
-        where: { email },
+        where: { email: normalizedEmail },
         select: { id: true },
       })
       // Explicitly return false when user is not found

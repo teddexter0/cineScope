@@ -1,5 +1,5 @@
-// lib/auth.ts — single source of truth for NextAuth configuration
-// Imported by [...nextauth]/route.ts AND any server route that needs getServerSession()
+// lib/auth.ts
+// Single source of truth for NextAuth configuration.
 
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
@@ -17,31 +17,38 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-  if (!credentials?.email || !credentials?.password) return null
-  
-  // Demo check FIRST — before any DB call
-  if (credentials.email === 'test@cinescope.com' && credentials.password === 'password123') {
-    return { id: 'demo-1', email: 'test@cinescope.com', name: 'Demo User' }
-  }
+        if (!credentials?.email || !credentials?.password) return null
 
-  try {
-    console.log('🔐 Attempting login for:', credentials.email)
-    const user = await prisma.user.findUnique({ where: { email: credentials.email } })
-          if (user && user.password) {
+        const normalizedEmail = credentials.email.toLowerCase().trim()
+
+        if (normalizedEmail === 'test@cinescope.com' && credentials.password === 'password123') {
+          return { id: 'demo-1', email: 'test@cinescope.com', name: 'Demo User' }
+        }
+
+        try {
+          console.log('Attempting login for:', normalizedEmail)
+
+          const user = await prisma.user.findUnique({
+            where: { email: normalizedEmail },
+          })
+
+          if (user?.password) {
             const passwordMatch = await bcrypt.compare(credentials.password, user.password)
             if (passwordMatch) {
-              console.log('✅ Database user login successful:', user.email)
-              return { id: user.id, email: user.email, name: user.name, username: user.username ?? undefined }
+              console.log('Database user login successful:', user.email)
+              return {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                username: user.username ?? undefined,
+              }
             }
           }
-          // Demo fallback for testing
-          if (credentials.email === 'test@cinescope.com' && credentials.password === 'password123') {
-            return { id: 'demo-1', email: 'test@cinescope.com', name: 'Demo User' }
-          }
-          console.log('❌ Login failed for:', credentials.email)
+
+          console.log('Login failed for:', normalizedEmail)
           return null
         } catch (error) {
-          console.error('❌ Auth error:', error)
+          console.error('Auth error:', error)
           return null
         }
       },
@@ -58,7 +65,6 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name
         token.username = (user as any).username
       }
-      // Client called update({ username }) — write new value into token immediately
       if (trigger === 'update' && sessionData?.username !== undefined) {
         token.username = sessionData.username
       }
@@ -80,7 +86,11 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
-    async signIn({ user }) { console.log('✅ Sign in:', user.email) },
-    async signOut() { console.log('👋 Sign out') },
+    async signIn({ user }) {
+      console.log('Sign in:', user.email)
+    },
+    async signOut() {
+      console.log('Sign out')
+    },
   },
 }
