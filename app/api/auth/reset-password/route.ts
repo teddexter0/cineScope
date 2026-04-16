@@ -24,12 +24,18 @@ export async function POST(request: NextRequest) {
     const email = payload.email.toLowerCase().trim()
     const hashed = await bcrypt.hash(password, 12)
 
-    const result = await prisma.user.updateMany({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: { id: true },
+    })
+
+    if (!user)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    await prisma.user.update({
+      where: { id: user.id },
       data: { password: hashed },
     })
-    if (result.count === 0)
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     return NextResponse.json({ success: true, message: 'Password updated. You can now sign in.' })
   } catch (err: any) {

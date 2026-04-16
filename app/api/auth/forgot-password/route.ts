@@ -45,13 +45,16 @@ export async function POST(request: NextRequest) {
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
     const clean = email.toLowerCase().trim()
-    let exists  = false
+    let userId: string | null = null
     try {
-      const u = await prisma.user.findUnique({ where: { email: clean }, select: { id: true } })
-      exists = !!u
+      const user = await prisma.user.findFirst({
+        where: { email: { equals: clean, mode: 'insensitive' } },
+        select: { id: true, email: true },
+      })
+      userId = user?.id ?? null
     } catch {}
 
-    if (!exists) return NextResponse.json({ success: true, message: 'If that email is registered, a reset link has been sent.' })
+    if (!userId) return NextResponse.json({ success: true, message: 'If that email is registered, a reset link has been sent.' })
 
     const token    = makeResetToken(clean)
     const baseUrl  = getBaseUrl(request)          // ← always the real public domain

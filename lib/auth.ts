@@ -28,8 +28,8 @@ export const authOptions: NextAuthOptions = {
         try {
           console.log('Attempting login for:', normalizedEmail)
 
-          const user = await prisma.user.findUnique({
-            where: { email: normalizedEmail },
+          const user = await prisma.user.findFirst({
+            where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
           })
 
           if (user?.password) {
