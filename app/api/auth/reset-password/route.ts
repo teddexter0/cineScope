@@ -8,6 +8,16 @@ import { verifyResetToken } from '../forgot-password/route'
 
 const prisma = new PrismaClient()
 
+async function findUserIdByEmailInsensitive(email: string): Promise<string | null> {
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id
+    FROM users
+    WHERE LOWER(email) = LOWER(${email})
+    LIMIT 1
+  `
+  return rows[0]?.id ?? null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { token, password } = await request.json()
@@ -24,16 +34,13 @@ export async function POST(request: NextRequest) {
     const email = payload.email.toLowerCase().trim()
     const hashed = await bcrypt.hash(password, 12)
 
-    const user = await prisma.user.findFirst({
-      where: { email: { equals: email, mode: 'insensitive' } },
-      select: { id: true },
-    })
+    const userId = await findUserIdByEmailInsensitive(email)
 
-    if (!user)
+    if (!userId)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: userId },
       data: { password: hashed },
     })
 

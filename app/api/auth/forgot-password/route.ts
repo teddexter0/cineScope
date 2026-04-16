@@ -9,6 +9,16 @@ const prisma  = new PrismaClient()
 const SECRET  = process.env.NEXTAUTH_SECRET || 'cinescope-reset-secret'
 const TTL     = 60 * 60 * 1000 // 1 hour
 
+async function findUserIdByEmailInsensitive(email: string): Promise<string | null> {
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id
+    FROM users
+    WHERE LOWER(email) = LOWER(${email})
+    LIMIT 1
+  `
+  return rows[0]?.id ?? null
+}
+
 function getBaseUrl(req: NextRequest): string {
   const fwdHost  = req.headers.get('x-forwarded-host')
   const host     = fwdHost || req.headers.get('host') || 'localhost:3000'
@@ -47,11 +57,7 @@ export async function POST(request: NextRequest) {
     const clean = email.toLowerCase().trim()
     let userId: string | null = null
     try {
-      const user = await prisma.user.findFirst({
-        where: { email: { equals: clean, mode: 'insensitive' } },
-        select: { id: true, email: true },
-      })
-      userId = user?.id ?? null
+      userId = await findUserIdByEmailInsensitive(clean)
     } catch {}
 
     if (!userId) return NextResponse.json({ success: true, message: 'If that email is registered, a reset link has been sent.' })
