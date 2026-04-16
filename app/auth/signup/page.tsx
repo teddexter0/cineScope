@@ -61,7 +61,7 @@ function SignUpForm() {
       setFormData(prev => ({ ...prev, email: prefilledEmail }))
       setValidations(prev => ({ ...prev, email: validateEmail(prefilledEmail) }))
     }
-  }, [])
+  }, [searchParams])
 
   // Debounce ref for username availability check
   const usernameDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)

@@ -1,7 +1,7 @@
 'use client'
 // app/ratings/page.tsx — with editable ratings
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
@@ -17,12 +17,7 @@ export default function RatingsPage() {
   const [ratings, setRatings] = useState<any[]>([])
   const [editTarget, setEditTarget] = useState<any | null>(null)
 
-  useEffect(() => {
-    if (status === 'unauthenticated') { router.push('/auth/signin'); return }
-    if (status === 'authenticated') loadRatings()
-  }, [status, router])
-
-  const loadRatings = async () => {
+  const loadRatings = useCallback(async () => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
       const stored = persistentStorage.getRatings(userEmail)
@@ -44,7 +39,12 @@ export default function RatingsPage() {
       } catch {}
     } catch (e) { console.error(e) }
     finally { setIsLoading(false) }
-  }
+  }, [session?.user?.email])
+
+  useEffect(() => {
+    if (status === 'unauthenticated') { router.push('/auth/signin'); return }
+    if (status === 'authenticated') void loadRatings()
+  }, [status, router, loadRatings])
 
   const handleEditSubmit = async (rating: number, review: string) => {
     if (!editTarget) return
@@ -190,7 +190,7 @@ export default function RatingsPage() {
                 {r.review && !r.review.startsWith('Liked from AI') && (
                   <div className="px-4 pb-4">
                     <p className="text-white/55 text-xs italic leading-relaxed line-clamp-2 border-l-2 border-white/10 pl-2">
-                      "{r.review}"
+                      &quot;{r.review}&quot;
                     </p>
                   </div>
                 )}

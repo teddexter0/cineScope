@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
               <Film className="w-8 h-8 text-blue-900" />
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Forgot Password</h1>
-            <p className="text-yellow-200">We'll get you back into CineScope</p>
+            <p className="text-yellow-200">We&apos;ll get you back into CineScope</p>
           </motion.div>
 
           <motion.div

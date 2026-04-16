@@ -303,7 +303,7 @@ export default function DiscoverPage() {
         ) : (
           <>
             {searchMode && (
-              <p className="text-white/50 text-sm mb-3">{searchResults.length} results for "<span className="text-white">{searchQuery}</span>"</p>
+              <p className="text-white/50 text-sm mb-3">{searchResults.length} results for <span className="text-white">&quot;{searchQuery}&quot;</span></p>
             )}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {(searchMode ? searchResults : results).map((item, i) => (

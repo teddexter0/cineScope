@@ -111,7 +111,7 @@ return (
           <div className="hero-description">
             <p>
               CineScope uses advanced AI to understand your unique taste and deliver movie recommendations 
-              so perfect, you'll feel like we're reading your mind.
+              so perfect, you&apos;ll feel like we&apos;re reading your mind.
             </p>
           </div>
 

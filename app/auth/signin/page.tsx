@@ -153,7 +153,7 @@ export default function SignInPage() {
                           <Link href="/auth/forgot-password" className="text-yellow-400 hover:text-yellow-300 transition-colors underline">
                             Reset your password
                           </Link>
-                          {' '}if you've forgotten it.
+                          {' '}if you&apos;ve forgotten it.
                         </p>
                       </>
                     )}

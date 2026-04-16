@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
@@ -38,15 +38,7 @@ export default function FavoritePeoplePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<CategoryTab>('all')
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      loadFavorites()
-    } else if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-    }
-  }, [status, router])
-
-  const loadFavorites = () => {
+  const loadFavorites = useCallback(() => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
       const favorites = persistentStorage.getFavoritePeople(userEmail)
@@ -57,7 +49,15 @@ export default function FavoritePeoplePage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [session?.user?.email])
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      loadFavorites()
+    } else if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+    }
+  }, [status, router, loadFavorites])
 
   // Derive which tabs to show (only show a category tab if there's at least one person in it)
   const visibleTabs = useMemo<CategoryTab[]>(() => {
@@ -280,7 +280,7 @@ export default function FavoritePeoplePage() {
 
           {searchQuery.length > 1 && searchResults.length === 0 && !isSearching && (
             <div className="mt-4 text-center text-white/60">
-              No people found for "{searchQuery}". Try a different name or spelling.
+              No people found for &quot;{searchQuery}&quot;. Try a different name or spelling.
             </div>
           )}
         </div>
@@ -323,7 +323,7 @@ export default function FavoritePeoplePage() {
               <h3 className="text-2xl font-bold text-white mb-4">No Favorite People Yet</h3>
               <p className="text-white/70 text-lg mb-6">Search above to find and add your favorite actors, directors, and artists!</p>
               <div className="text-white/60 text-sm">
-                Try: "Ryan Gosling", "Greta Gerwig", "Beyoncé", "Christopher Nolan"
+                Try: &quot;Ryan Gosling&quot;, &quot;Greta Gerwig&quot;, &quot;Beyonce&quot;, &quot;Christopher Nolan&quot;
               </div>
             </div>
           ) : displayedPeople.length === 0 ? (

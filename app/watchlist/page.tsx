@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
@@ -30,17 +30,7 @@ export default function WatchlistPage() {
   const [watchTab, setWatchTab] = useState<WatchTab>('to_watch')
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all')
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-      return
-    }
-    if (status === 'authenticated') {
-      loadWatchlist()
-    }
-  }, [status, router])
-
-  const loadWatchlist = async () => {
+  const loadWatchlist = useCallback(async () => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
       const storedWatchlist = persistentStorage.getWatchlist(userEmail)
@@ -70,7 +60,17 @@ export default function WatchlistPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [session?.user?.email])
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+    if (status === 'authenticated') {
+      void loadWatchlist()
+    }
+  }, [status, router, loadWatchlist])
 
   const removeFromWatchlist = async (movieId: string) => {
     const userEmail = session?.user?.email || 'demo@user.com'
@@ -282,7 +282,7 @@ export default function WatchlistPage() {
                 </p>
                 {importResult.failed.length > 0 && (
                   <p className="text-white/50 text-xs mt-1 truncate">
-                    Couldn't find: {importResult.failed.slice(0, 5).join(', ')}{importResult.failed.length > 5 ? `… +${importResult.failed.length - 5} more` : ''}
+                    Could not find: {importResult.failed.slice(0, 5).join(', ')}{importResult.failed.length > 5 ? `... +${importResult.failed.length - 5} more` : ''}
                   </p>
                 )}
               </div>
@@ -376,7 +376,7 @@ export default function WatchlistPage() {
                 onClick={() => setWatchTab('to_watch')}
                 className="mt-4 text-sm text-purple-300 hover:text-purple-200 underline"
               >
-                Go to Watchlist →
+                Go to Watchlist -&gt;
               </button>
             )}
           </div>

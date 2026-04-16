@@ -26,7 +26,11 @@ export default function MovieCard({ movie, index, onWatchlist, onRate, existingR
   const score    = movie.vote_average ?? 0
   const isTv     = movie.media_type === 'tv'
   const synopsis = movie.overview || ''
-  const poster   = movie.poster_path ? `https://image.tmdb.org/t/p/w342${movie.poster_path}` : null
+  const poster   = movie.poster_path
+    ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
+    : movie.backdrop_path
+      ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path}`
+      : null
 
   return (
     <>

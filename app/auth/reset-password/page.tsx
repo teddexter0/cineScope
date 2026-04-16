@@ -149,7 +149,7 @@ function ResetPasswordForm() {
                     />
                   </div>
                   {confirm && password !== confirm && (
-                    <p className="text-red-400 text-xs mt-1">Passwords don't match</p>
+                    <p className="text-red-400 text-xs mt-1">Passwords don&apos;t match</p>
                   )}
                 </div>
 
@@ -161,7 +161,7 @@ function ResetPasswordForm() {
                       <p className="text-red-200 text-sm">{error}</p>
                       {error.includes('expired') && (
                         <Link href="/auth/forgot-password" className="text-yellow-300 text-xs hover:underline mt-1 inline-block">
-                          Request a new link →
+                          Request a new link -&gt;
                         </Link>
                       )}
                     </div>

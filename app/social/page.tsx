@@ -37,19 +37,6 @@ export default function SocialPage() {
   const myName     = session?.user?.name     || ''
   const myUsername = session?.user?.username || ''
 
-  // Register this user + load data when authenticated
-  useEffect(() => {
-    if (status === 'unauthenticated') { router.push('/auth/signin'); return }
-    if (status !== 'authenticated') return
-
-    // Register profile
-    fetch('/api/friends', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'register', email: myEmail, name: myName, username: myUsername || undefined }),
-    }).then(() => loadAll())
-  }, [status])
-
   const loadAll = useCallback(async () => {
     if (!myEmail) return
     setIsLoading(true)
@@ -67,6 +54,18 @@ export default function SocialPage() {
       setIsLoading(false)
     }
   }, [myEmail])
+
+  // Register this user + load data when authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') { router.push('/auth/signin'); return }
+    if (status !== 'authenticated') return
+
+    fetch('/api/friends', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'register', email: myEmail, name: myName, username: myUsername || undefined }),
+    }).then(() => loadAll())
+  }, [status, router, myEmail, myName, myUsername, loadAll])
 
   const searchUsers = async () => {
     if (searchQuery.length < 2) return
@@ -140,7 +139,7 @@ export default function SocialPage() {
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-400" /> Social
           </h1>
-          <p className="text-purple-200 mt-1">Friends, leaderboard, and what everyone's been watching</p>
+          <p className="text-purple-200 mt-1">Friends, leaderboard, and what everyone&apos;s been watching</p>
         </div>
 
         {/* Tabs */}
@@ -204,7 +203,7 @@ export default function SocialPage() {
                 </div>
               )}
               {searchQuery.length > 1 && searchResults.length === 0 && !isSearching && (
-                <p className="text-white/40 text-xs mt-3 text-center">No users found for "{searchQuery}". They may not have signed in yet.</p>
+                <p className="text-white/40 text-xs mt-3 text-center">No users found for &quot;{searchQuery}&quot;. They may not have signed in yet.</p>
               )}
             </div>
 
@@ -300,7 +299,7 @@ export default function SocialPage() {
                     <span className="font-semibold text-purple-300">@{item.username}</span>
                     <span className="text-white/60"> {item.action === 'watched' ? 'watched' : 'added to watchlist'}</span>
                   </p>
-                  <p className="text-white font-medium text-sm truncate">"{item.title}"</p>
+                  <p className="text-white font-medium text-sm truncate">&quot;{item.title}&quot;</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className={`text-xs flex items-center gap-0.5 ${item.mediaType === 'tv' ? 'text-pink-400' : 'text-blue-400'}`}>
                       {item.mediaType === 'tv' ? <Tv className="w-3 h-3" /> : <Film className="w-3 h-3" />}

@@ -399,7 +399,7 @@ export default function OnboardingPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
             <h1 className="text-5xl font-bold text-white mb-6">🎬 Welcome to CineScope!</h1>
             <p className="text-yellow-200 text-xl leading-relaxed">
-              Let's build your movie DNA so we can recommend films that'll blow your mind.
+              Let&apos;s build your movie DNA so we can recommend films that&apos;ll blow your mind.
               <br />
               <span className="text-lg opacity-80 font-medium">This takes 2 minutes and creates magic ✨</span>
             </p>
