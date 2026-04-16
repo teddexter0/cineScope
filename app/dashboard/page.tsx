@@ -97,6 +97,7 @@ export default function Dashboard() {
   const [tourKey, setTourKey] = useState(0)
   const [showTourComp, setShowTourComp] = useState(true)
   const [navLoading, setNavLoading] = useState<string | null>(null)
+  const [menuActionLoading, setMenuActionLoading] = useState<string | null>(null)
 
   const [showUsernameModal, setShowUsernameModal] = useState(false)
   const [newUsername, setNewUsername] = useState('')
@@ -128,7 +129,7 @@ export default function Dashboard() {
     })
     setUserRatings(map)
 
-    if (localStorage.getItem('cinescope_tour_done_v1')) setTourReady(true)
+    setTourReady(true)
 
     loadRecs()
 
@@ -183,9 +184,13 @@ export default function Dashboard() {
 
   const navTo = (path: string) => {
     setNavLoading(path)
+    setMenuActionLoading(path)
     setShowUserMenu(false)
     router.push(path)
-    setTimeout(() => setNavLoading(null), 3000)
+    setTimeout(() => {
+      setNavLoading(null)
+      setMenuActionLoading(null)
+    }, 3000)
   }
 
   const doSearch = async (q: string) => {
@@ -298,8 +303,8 @@ export default function Dashboard() {
 
   const replayTour = () => {
     localStorage.removeItem('cinescope_tour_done_v1')
-    setTourReady(false)
     setShowTourComp(false)
+    setShowUserMenu(false)
     setTimeout(() => {
       setShowTourComp(true)
       setTourKey(k => k + 1)
@@ -322,12 +327,17 @@ export default function Dashboard() {
   }
 
   const openUnModal = async () => {
+    setMenuActionLoading('change-username')
     setShowUserMenu(false)
     setNewUsername((session?.user as any)?.username || '')
     setUnStatus(null)
     setShowUsernameModal(true)
-    const res = await fetch('/api/auth/change-username')
-    if (res.ok) setUnQuota((await res.json()).quota)
+    try {
+      const res = await fetch('/api/auth/change-username')
+      if (res.ok) setUnQuota((await res.json()).quota)
+    } finally {
+      setMenuActionLoading(null)
+    }
   }
 
   const checkUn = async (val: string) => {
@@ -523,17 +533,15 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-1.5 md:gap-2">
-              {tourReady && (
-                <button
-                  onClick={replayTour}
-                  title="Replay the tour"
-                  className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-white/55 hover:text-white text-sm transition-all"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  <span className="hidden md:inline text-xs">Tour</span>
-                </button>
-              )}
+              <button
+                onClick={replayTour}
+                title="Replay the tour"
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-white/55 hover:text-white text-sm transition-all"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span className="hidden md:inline text-xs">Tour</span>
+              </button>
 
               <button
                 onClick={() => loadRecs(favGenres)}
@@ -575,14 +583,14 @@ export default function Dashboard() {
                         <button
                           key={item.path}
                           onClick={() => navTo(item.path)}
-                          disabled={navLoading === item.path}
+                          disabled={menuActionLoading !== null}
                           className="w-full text-left px-4 py-2.5 text-white/75 hover:text-white hover:bg-white/8 transition-colors flex items-center justify-between text-sm disabled:opacity-60"
                         >
                           <div className="flex items-center gap-2.5">
                             <item.icon className="w-3.5 h-3.5 text-white/35 flex-shrink-0" />
                             {item.label}
                           </div>
-                          {navLoading === item.path && (
+                          {menuActionLoading === item.path && (
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-white/50" />
                           )}
                         </button>
@@ -591,22 +599,35 @@ export default function Dashboard() {
                       <div className="my-1 border-t border-white/8" />
                       <button
                         onClick={openUnModal}
-                        className="w-full text-left px-4 py-2.5 text-white/75 hover:text-white hover:bg-white/8 transition-colors flex items-center gap-2.5 text-sm"
+                        disabled={menuActionLoading !== null}
+                        className="w-full text-left px-4 py-2.5 text-white/75 hover:text-white hover:bg-white/8 transition-colors flex items-center justify-between gap-2.5 text-sm disabled:opacity-60"
                       >
-                        <AtSign className="w-3.5 h-3.5 text-purple-400" />
-                        Change Username
+                        <div className="flex items-center gap-2.5">
+                          <AtSign className="w-3.5 h-3.5 text-purple-400" />
+                          Change Username
+                        </div>
+                        {menuActionLoading === 'change-username' && (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-white/50" />
+                        )}
                       </button>
 
                       <div className="my-1 border-t border-white/8" />
                       <button
                         onClick={async () => {
+                          setMenuActionLoading('signout')
                           await signOut({ redirect: false })
                           router.push('/')
                         }}
-                        className="w-full text-left px-4 py-2.5 text-white/75 hover:text-white hover:bg-white/8 transition-colors flex items-center gap-2.5 text-sm"
+                        disabled={menuActionLoading !== null}
+                        className="w-full text-left px-4 py-2.5 text-white/75 hover:text-white hover:bg-white/8 transition-colors flex items-center justify-between gap-2.5 text-sm disabled:opacity-60"
                       >
-                        <LogOut className="w-3.5 h-3.5 text-white/35" />
-                        Sign Out
+                        <div className="flex items-center gap-2.5">
+                          <LogOut className="w-3.5 h-3.5 text-white/35" />
+                          Sign Out
+                        </div>
+                        {menuActionLoading === 'signout' && (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-white/50" />
+                        )}
                       </button>
                     </motion.div>
                   )}
@@ -755,9 +776,9 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className="px-4 pb-24 md:px-6" data-tour="ai-recs">
+        <section className="px-4 pb-24 md:px-6">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-2.5 mb-5">
+            <div className="flex items-center gap-2.5 mb-5" data-tour="ai-recs">
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg,#a855f7,#ec4899)' }}

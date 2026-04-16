@@ -67,12 +67,18 @@ const STEPS: Step[] = [
 ]
 
 const KEY = 'cinescope_tour_done_v1'
+const TARGET_MAX_WIDTH = 320
+const TARGET_MAX_HEIGHT = 140
 
 function getViewportRect(selector: string): Rect | null {
   const el = document.querySelector(selector)
   if (!el) return null
   const r = el.getBoundingClientRect()
-  return { top: r.top, left: r.left, width: r.width, height: r.height }
+  const width = Math.min(r.width, TARGET_MAX_WIDTH)
+  const height = Math.min(r.height, TARGET_MAX_HEIGHT)
+  const left = r.left + (r.width - width) / 2
+  const top = r.top + (r.height - height) / 2
+  return { top, left, width, height }
 }
 
 export default function OnboardingTour({ onReady }: Props) {

@@ -21,14 +21,14 @@ export async function POST(request: NextRequest) {
     if (!payload)
       return NextResponse.json({ error: 'Reset link is invalid or has expired. Please request a new one.' }, { status: 400 })
 
-    const { email } = payload
-
+    const email = payload.email.toLowerCase().trim()
     const hashed = await bcrypt.hash(password, 12)
 
-    const result = await prisma.$executeRaw`
-      UPDATE users SET password = ${hashed} WHERE email = ${email}
-    `
-    if (!result)
+    const result = await prisma.user.updateMany({
+      where: { email },
+      data: { password: hashed },
+    })
+    if (result.count === 0)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     return NextResponse.json({ success: true, message: 'Password updated. You can now sign in.' })
