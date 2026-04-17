@@ -17,6 +17,15 @@ interface ImportResult {
   failed: string[]
 }
 
+interface ImportProgress {
+  processed: number
+  total: number
+  imported: number
+  skipped: number
+  failed: number
+  currentTitle: string
+}
+
 type WatchTab = 'to_watch' | 'watched'
 type MediaFilter = 'all' | 'movie' | 'tv'
 
@@ -27,6 +36,7 @@ export default function WatchlistPage() {
   const [watchlist, setWatchlist] = useState<any[]>([])
   const [isImporting, setIsImporting] = useState(false)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [watchTab, setWatchTab] = useState<WatchTab>('to_watch')
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all')
 
@@ -168,8 +178,25 @@ export default function WatchlistPage() {
       const items = parseImdbCsv(text)
       const userEmail = session?.user?.email || 'demo@user.com'
       const result: ImportResult = { total: items.length, imported: 0, skipped: 0, failed: [] }
-      for (const item of items) {
+      setImportProgress({
+        processed: 0,
+        total: items.length,
+        imported: 0,
+        skipped: 0,
+        failed: 0,
+        currentTitle: items[0]?.title || 'Preparing import',
+      })
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index]
         if (!item.title) continue
+        setImportProgress({
+          processed: index,
+          total: items.length,
+          imported: result.imported,
+          skipped: result.skipped,
+          failed: result.failed.length,
+          currentTitle: item.title,
+        })
         const tmdbMovie = await searchTmdbForTitle(item.title, item.year)
         if (!tmdbMovie) { result.failed.push(item.title); continue }
         const movieData = {
@@ -183,6 +210,14 @@ export default function WatchlistPage() {
         }
         const added = persistentStorage.addToWatchlist(userEmail, movieData)
         if (added) { result.imported++ } else { result.skipped++ }
+        setImportProgress({
+          processed: index + 1,
+          total: items.length,
+          imported: result.imported,
+          skipped: result.skipped,
+          failed: result.failed.length,
+          currentTitle: item.title,
+        })
         await new Promise(r => setTimeout(r, 250))
       }
       setWatchlist(persistentStorage.getWatchlist(userEmail))
@@ -190,6 +225,7 @@ export default function WatchlistPage() {
     } catch (err) {
       console.error('IMDB import error:', err)
     } finally {
+      setImportProgress(null)
       setIsImporting(false)
       e.target.value = ''
     }
@@ -289,6 +325,42 @@ export default function WatchlistPage() {
               <button onClick={() => setImportResult(null)} className="text-white/40 hover:text-white/70 flex-shrink-0">
                 <XCircle className="w-4 h-4" />
               </button>
+            </motion.div>
+          )}
+
+          {isImporting && importProgress && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 rounded-xl p-4 border"
+              style={{ background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(250,204,21,0.2)' }}
+            >
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Loader className="w-4 h-4 animate-spin text-yellow-300 flex-shrink-0" />
+                  <p className="text-white text-sm font-medium truncate">
+                    Importing IMDb watchlist...
+                  </p>
+                </div>
+                <span className="text-yellow-300 text-xs font-medium flex-shrink-0">
+                  {importProgress.processed}/{importProgress.total}
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-white/8 overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${importProgress.total ? (importProgress.processed / importProgress.total) * 100 : 0}%`,
+                    background: 'linear-gradient(90deg,#facc15,#f97316)',
+                  }}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/55">
+                <span>Now processing: <span className="text-white/80">{importProgress.currentTitle}</span></span>
+                <span>{importProgress.imported} added</span>
+                <span>{importProgress.skipped} already saved</span>
+                <span>{importProgress.failed} not found</span>
+              </div>
             </motion.div>
           )}
         </div>
