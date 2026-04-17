@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { verifyResetToken } from '../forgot-password/route'
+import { verifyResetToken } from '@/lib/reset-token'
 
 const prisma = new PrismaClient()
 
@@ -40,14 +40,16 @@ export async function POST(request: NextRequest) {
     if (!userId)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashed },
-    })
-
-    const updated = await prisma.$queryRaw<Array<{ password: string | null }>>`
-      SELECT password FROM users WHERE id = ${userId} LIMIT 1
+    const updated = await prisma.$queryRaw<Array<{ id: string; password: string | null }>>`
+      UPDATE users
+      SET password = ${hashed}
+      WHERE id = ${userId}
+      RETURNING id, password
     `
+    if (!updated[0]?.id) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
     console.log('[reset-password] password updated, hash length:', updated[0]?.password?.length)
 
     return NextResponse.json({ success: true, message: 'Password updated. You can now sign in.' })
