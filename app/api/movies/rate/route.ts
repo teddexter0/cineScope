@@ -1,28 +1,27 @@
-// app/api/movies/rate/route.ts
-// FIXED: Always pass authOptions to getServerSession()
-
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { mapRatingItem, upsertMediaRecord } from '@/lib/media-persistence'
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __cineRatings: Map<string, any[]> | undefined
-}
-const sessionRatings: Map<string, any[]> =
-  global.__cineRatings ?? (global.__cineRatings = new Map())
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    const userEmail = session?.user?.email || 'demo@user.com'
+    const userId = session?.user?.id
 
-    const userRatings = sessionRatings.get(userEmail) || []
-    console.log('⭐ Getting ratings for:', userEmail, 'Count:', userRatings.length)
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
+    }
 
-    return NextResponse.json({ success: true, ratings: userRatings })
+    const userRatings = await prisma.rating.findMany({
+      where: { userId },
+      include: { movie: true },
+      orderBy: { updatedAt: 'desc' },
+    })
+
+    return NextResponse.json({ success: true, ratings: userRatings.map(mapRatingItem) })
   } catch (error) {
-    console.error('❌ Get ratings error:', error)
+    console.error('Get ratings error:', error)
     return NextResponse.json({ success: false, error: 'Failed to get ratings' }, { status: 500 })
   }
 }
@@ -30,39 +29,41 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    const userEmail = session?.user?.email || 'demo@user.com'
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
+    }
 
     const body = await request.json()
-    const { movieId, title, poster_path, vote_average, release_date, rating, review, media_type } = body
+    const movie = await upsertMediaRecord(body)
+    const ratingItem = await prisma.rating.upsert({
+      where: {
+        userId_movieId: {
+          userId,
+          movieId: movie.id,
+        },
+      },
+      update: {
+        rating: Number(body.rating),
+        review: body.review || 'Liked from AI recommendations',
+      },
+      create: {
+        userId,
+        movieId: movie.id,
+        rating: Number(body.rating),
+        review: body.review || 'Liked from AI recommendations',
+      },
+      include: { movie: true },
+    })
 
-    const userRatings = sessionRatings.get(userEmail) || []
-    const existingIndex = userRatings.findIndex(item => item.movieId === movieId?.toString())
-
-    const ratingItem = {
-      id: existingIndex >= 0 ? userRatings[existingIndex].id : Date.now().toString(),
-      movieId: movieId?.toString(),
-      title,
-      poster_path,
-      vote_average,
-      release_date,
-      rating,
-      media_type: media_type || 'movie',
-      review: review || 'Liked from AI recommendations',
-      createdAt: existingIndex >= 0 ? userRatings[existingIndex].createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    if (existingIndex >= 0) {
-      userRatings[existingIndex] = ratingItem
-    } else {
-      userRatings.push(ratingItem)
-    }
-
-    sessionRatings.set(userEmail, userRatings)
-
-    return NextResponse.json({ success: true, rating: ratingItem, message: `${title} rating saved!` })
+    return NextResponse.json({
+      success: true,
+      rating: mapRatingItem(ratingItem),
+      message: `${movie.title} rating saved!`,
+    })
   } catch (error: any) {
-    console.error('❌ Add rating error:', error)
+    console.error('Add rating error:', error)
     return NextResponse.json({ success: false, error: 'Failed to save rating: ' + error.message }, { status: 500 })
   }
 }
@@ -70,7 +71,11 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    const userEmail = session?.user?.email || 'demo@user.com'
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
 
     const { searchParams } = new URL(request.url)
     const movieId = searchParams.get('movieId')
@@ -79,12 +84,24 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'movieId required' }, { status: 400 })
     }
 
-    const userRatings = sessionRatings.get(userEmail) || []
-    sessionRatings.set(userEmail, userRatings.filter(item => item.movieId !== movieId))
+    const movie = await prisma.movie.findUnique({
+      where: { tmdbId: Number(movieId) },
+    })
+
+    if (!movie) {
+      return NextResponse.json({ success: true })
+    }
+
+    await prisma.rating.deleteMany({
+      where: {
+        userId,
+        movieId: movie.id,
+      },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('❌ Remove rating error:', error)
+    console.error('Remove rating error:', error)
     return NextResponse.json({ error: 'Failed to remove rating' }, { status: 500 })
   }
 }

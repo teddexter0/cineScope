@@ -9,6 +9,7 @@ import Image from 'next/image'
 import { Star, Calendar, ArrowLeft, Film, Pencil } from 'lucide-react'
 import { persistentStorage } from '@/lib/persistent-storage'
 import RatingModal from '@/app/components/RatingModal'
+import { saveRating, syncLocalRatings } from '@/lib/client-media-sync'
 
 export default function RatingsPage() {
   const { data: session, status } = useSession()
@@ -20,23 +21,8 @@ export default function RatingsPage() {
   const loadRatings = useCallback(async () => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
-      const stored = persistentStorage.getRatings(userEmail)
-      setRatings(stored)
-      // Background server sync
-      try {
-        const res = await fetch('/api/movies/rate')
-        const data = await res.json()
-        if (data.success && data.ratings?.length > 0) {
-          const merged = [...stored]
-          data.ratings.forEach((s: any) => {
-            if (!merged.find(l => l.movieId === s.movieId)) merged.push(s)
-          })
-          if (merged.length > stored.length) {
-            persistentStorage.setRatings(userEmail, merged)
-            setRatings(merged)
-          }
-        }
-      } catch {}
+      const syncedRatings = await syncLocalRatings(userEmail)
+      setRatings(syncedRatings)
     } catch (e) { console.error(e) }
     finally { setIsLoading(false) }
   }, [session?.user?.email])
@@ -55,16 +41,13 @@ export default function RatingsPage() {
       review,
       updatedAt: new Date().toISOString(),
     }
-    persistentStorage.addRating(userEmail, updated)
-    setRatings(persistentStorage.getRatings(userEmail))
-    // Sync server
     try {
-      await fetch('/api/movies/rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...updated, movieId: editTarget.movieId }),
-      })
-    } catch {}
+      await saveRating({ ...updated, movieId: editTarget.movieId })
+      persistentStorage.addRating(userEmail, updated)
+      setRatings(await syncLocalRatings(userEmail))
+    } catch (error) {
+      console.error('Failed to update rating:', error)
+    }
     setEditTarget(null)
   }
 

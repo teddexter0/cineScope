@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { ArrowLeft, Film, Tv, Star, Plus, Sparkles, ChevronLeft, ChevronRight, Search, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react'
 import { persistentStorage } from '@/lib/persistent-storage'
+import { saveWatchlistItem } from '@/lib/client-media-sync'
 
 // Static genre lists (TMDB IDs — stable)
 const MOVIE_GENRES = [
@@ -108,10 +109,23 @@ export default function DiscoverPage() {
 
   useEffect(() => { fetchResults(1) }, [fetchResults])
 
-  const handleAddToWatchlist = (movie: any) => {
+  const handleAddToWatchlist = async (movie: any) => {
     const userEmail = session?.user?.email || 'demo@user.com'
-    const ok = persistentStorage.addToWatchlist(userEmail, { ...movie, media_type: mediaType })
-    showToast(ok ? `"${movie.title || movie.name}" added to watchlist!` : 'Already in watchlist', ok ? 'success' : 'info')
+    try {
+      await saveWatchlistItem({
+        movieId: movie.id,
+        title: movie.title || movie.name,
+        poster_path: movie.poster_path,
+        vote_average: movie.vote_average,
+        release_date: movie.release_date || movie.first_air_date,
+        overview: movie.overview,
+        media_type: movie.media_type || mediaType,
+      })
+      persistentStorage.addToWatchlist(userEmail, { ...movie, media_type: movie.media_type || mediaType })
+      showToast(`"${movie.title || movie.name}" added to watchlist!`, 'success')
+    } catch (error: any) {
+      showToast(error?.message?.includes('already') ? 'Already in watchlist' : 'Failed to save watchlist item', 'info')
+    }
   }
 
   const showToast = (msg: string, type: 'success' | 'info') => {
