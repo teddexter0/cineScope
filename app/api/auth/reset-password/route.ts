@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     const hashed = await bcrypt.hash(password, 12)
 
     const userId = await findUserIdByEmailInsensitive(email)
+    console.log('[reset-password] resolved user id:', userId, 'type:', typeof userId)
 
     if (!userId)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -43,6 +44,11 @@ export async function POST(request: NextRequest) {
       where: { id: userId },
       data: { password: hashed },
     })
+
+    const updated = await prisma.$queryRaw<Array<{ password: string | null }>>`
+      SELECT password FROM users WHERE id = ${userId} LIMIT 1
+    `
+    console.log('[reset-password] password updated, hash length:', updated[0]?.password?.length)
 
     return NextResponse.json({ success: true, message: 'Password updated. You can now sign in.' })
   } catch (err: any) {

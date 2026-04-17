@@ -414,6 +414,17 @@ export default function Dashboard() {
         />
       )}
 
+      {tourReady && (
+        <button
+          onClick={replayTour}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-medium shadow-lg transition-all hover:scale-105"
+          style={{ background: 'rgba(10,8,22,0.92)', border: '1px solid rgba(250,204,21,0.3)', backdropFilter: 'blur(12px)' }}
+        >
+          <HelpCircle className="w-4 h-4 text-yellow-400" />
+          <span>Tour</span>
+        </button>
+      )}
+
       <AnimatePresence>
         {showUsernameModal && (
           <motion.div
@@ -540,7 +551,7 @@ export default function Dashboard() {
                 style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}
               >
                 <HelpCircle className="w-4 h-4" />
-                <span className="hidden md:inline text-xs">Tour</span>
+                <span className="text-xs">Tour</span>
               </button>
 
               <button

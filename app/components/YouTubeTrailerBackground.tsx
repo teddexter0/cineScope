@@ -167,7 +167,7 @@ export default function YouTubeTrailerBackground({
             width: '160vh',      // 90vh × 16/9
             minWidth: '100vw',
             transform: 'translate(-50%, -50%)',
-            filter: 'brightness(0.85) contrast(1.05)'
+            filter: 'brightness(0.45) contrast(1.05) saturate(0.9)'
           } : {
             // Desktop: full-viewport cover (crops left/right on wide screens)
             top: '50%',
@@ -177,7 +177,7 @@ export default function YouTubeTrailerBackground({
             minWidth: '100vw',
             minHeight: '56.25vw',
             transform: 'translate(-50%, -50%)',
-            filter: 'brightness(0.7) contrast(1.1)'
+            filter: 'brightness(0.45) contrast(1.05) saturate(0.9)'
           }}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
