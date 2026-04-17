@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Film, Zap, Clock, Sparkles, Heart } from 'lucide-react'
-import { getDailyFact, type CineFact } from '@/lib/daily-facts'
+import { type CineFact } from '@/lib/daily-facts'
 
 const CATEGORY_META: Record<CineFact['category'], { icon: React.ReactNode; label: string; color: string; bg: string }> = {
   origin:      { icon: <Sparkles className="w-5 h-5" />, label: 'Origin Story',  color: 'text-yellow-300', bg: 'bg-yellow-500/20 border-yellow-500/40' },
@@ -16,27 +16,28 @@ const CATEGORY_META: Record<CineFact['category'], { icon: React.ReactNode; label
 }
 
 interface Props {
-  userEmail: string
+  factData: {
+    fact: CineFact
+    isNew: boolean
+  } | null
   enabled?: boolean
 }
 
-export default function DailyFactPopup({ userEmail, enabled = true }: Props) {
+export default function DailyFactPopup({ factData, enabled = true }: Props) {
   const [visible, setVisible] = useState(false)
   const [fact, setFact] = useState<CineFact | null>(null)
 
   useEffect(() => {
-    if (!userEmail || !enabled) {
+    if (!factData?.fact || !enabled) {
       setVisible(false)
       return
     }
-    const { fact: dailyFact, isNew } = getDailyFact(userEmail)
-    setFact(dailyFact)
-    // Only pop up automatically if it's a new (today's) fact
-    if (isNew) {
+    setFact(factData.fact)
+    if (factData.isNew) {
       const timer = setTimeout(() => setVisible(true), 1800)
       return () => clearTimeout(timer)
     }
-  }, [userEmail, enabled])
+  }, [factData, enabled])
 
   if (!fact) return null
 

@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { useSession } from 'next-auth/react'
 
 interface Question {
   id: number
@@ -123,6 +124,7 @@ const onboardingQuestions: Question[] = [
 type Answer = string | string[] | number
 
 export default function OnboardingPage() {
+  const { status } = useSession()
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<Record<number, Answer>>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -178,7 +180,17 @@ export default function OnboardingPage() {
     try {
       localStorage.setItem('onboardingAnswers', JSON.stringify(answers))
       localStorage.setItem('onboardingCompleted', 'true')
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      if (status === 'authenticated') {
+        await fetch('/api/onboarding/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            responses: answers,
+            completed: true,
+          }),
+        })
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000))
       router.push('/dashboard')
     } catch (error) {
       console.error('Error completing onboarding:', error)

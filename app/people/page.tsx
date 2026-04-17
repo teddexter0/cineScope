@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { ArrowLeft, User, Plus, Trash2, Search, Star, Mic2, Film, Video, Users } from 'lucide-react'
 import { persistentStorage } from '@/lib/persistent-storage'
+import { patchUserState, syncLocalUserState } from '@/lib/client-media-sync'
 
 type CategoryTab = 'all' | 'directors' | 'actors' | 'music' | 'other'
 
@@ -39,16 +40,18 @@ export default function FavoritePeoplePage() {
   const [activeTab, setActiveTab] = useState<CategoryTab>('all')
 
   const loadFavorites = useCallback(() => {
-    try {
-      const userEmail = session?.user?.email || 'demo@user.com'
-      const favorites = persistentStorage.getFavoritePeople(userEmail)
-      setFavoritePeople(favorites)
-    } catch (error) {
-      console.error('Load error:', error)
-      setFavoritePeople([])
-    } finally {
-      setIsLoading(false)
-    }
+    const userEmail = session?.user?.email || 'demo@user.com'
+    syncLocalUserState(userEmail)
+      .then(state => {
+        setFavoritePeople(state.favoritePeople || [])
+      })
+      .catch(error => {
+        console.error('Load error:', error)
+        setFavoritePeople(persistentStorage.getFavoritePeople(userEmail))
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
   }, [session?.user?.email])
 
   useEffect(() => {
@@ -97,12 +100,13 @@ export default function FavoritePeoplePage() {
     }
   }
 
-  const addToFavorites = (person: any) => {
+  const addToFavorites = async (person: any) => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
       const success = persistentStorage.addFavoritePerson(userEmail, person)
       if (success) {
         const updatedFavorites = persistentStorage.getFavoritePeople(userEmail)
+        await patchUserState({ favoritePeople: updatedFavorites })
         setFavoritePeople(updatedFavorites)
         // Auto-switch to that person's category tab
         const cat = getDepartmentCategory(person.known_for_department)
@@ -118,13 +122,14 @@ export default function FavoritePeoplePage() {
     }
   }
 
-  const removeFromFavorites = (personId: number) => {
+  const removeFromFavorites = async (personId: number) => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
       const person = favoritePeople.find(p => p.id === personId)
       const success = persistentStorage.removeFavoritePerson(userEmail, personId)
       if (success) {
         const updatedFavorites = persistentStorage.getFavoritePeople(userEmail)
+        await patchUserState({ favoritePeople: updatedFavorites })
         setFavoritePeople(updatedFavorites)
         showNotification(`${person?.name || 'Person'} removed from favorites`, 'success')
       }

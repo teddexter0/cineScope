@@ -7,6 +7,7 @@ import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
+const APP_STATE_KEY = '__cineScopeAppState'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,10 +28,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    const existing = await prisma.onboardingData.findUnique({
+      where: { userId: user.id },
+      select: { responses: true },
+    })
+    const existingResponses = existing?.responses && typeof existing.responses === 'object' && !Array.isArray(existing.responses)
+      ? existing.responses as Record<string, any>
+      : {}
+    const preservedAppState = existingResponses[APP_STATE_KEY]
+    const mergedResponses = preservedAppState
+      ? { ...responses, [APP_STATE_KEY]: preservedAppState }
+      : responses
+
     await prisma.onboardingData.upsert({
       where: { userId: user.id },
-      update: { responses, completed, updatedAt: new Date() },
-      create: { userId: user.id, responses, completed },
+      update: { responses: mergedResponses, completed, updatedAt: new Date() },
+      create: { userId: user.id, responses: mergedResponses, completed },
     })
 
     const preferences = analyzeResponses(responses)
