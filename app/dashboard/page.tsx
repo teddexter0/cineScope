@@ -17,7 +17,7 @@ import DailyFactPopup from '@/app/components/DailyFactPopup'
 import MovieCard from '@/app/components/MovieCard'
 import OnboardingTour from '@/app/components/OnboardingTour'
 import { persistentStorage } from '@/lib/persistent-storage'
-import { saveRating, saveWatchlistItem, syncLocalRatings } from '@/lib/client-media-sync'
+import { patchUserState, saveRating, saveWatchlistItem, syncLocalRatings, syncLocalUserState, type UserStatePayload } from '@/lib/client-media-sync'
 
 const GENRES = [
   { id: '28', name: 'Action', emoji: '' },
@@ -94,6 +94,8 @@ export default function Dashboard() {
   const [showSearch, setShowSearch] = useState(false)
   const [favGenres, setFavGenres] = useState<string[]>([])
   const [userRatings, setUserRatings] = useState<Record<string, number>>({})
+  const [onboardingResponses, setOnboardingResponses] = useState<Record<string, any>>({})
+  const [dailyFactState, setDailyFactState] = useState<UserStatePayload['dailyFact'] | null>(null)
   const [tourReady, setTourReady] = useState(false)
   const [tourKey, setTourKey] = useState(0)
   const [showTourComp, setShowTourComp] = useState(true)
@@ -114,33 +116,36 @@ export default function Dashboard() {
       return
     }
     if (status !== 'authenticated') return
-
-    if (!localStorage.getItem('onboardingCompleted')) {
-      router.push('/onboarding')
-      return
-    }
-
-    setPageReady(true)
     const email = session?.user?.email || ''
-    if (email) setFavGenres(persistentStorage.getFavoriteCategories(email))
 
     void (async () => {
       try {
+        const userState = await syncLocalUserState(email || 'demo@user.com')
+        setOnboardingResponses(userState.onboarding?.responses || {})
+        setFavGenres(userState.favoriteCategories || [])
+        setDailyFactState(userState.dailyFact || null)
+
+        if (!userState.onboarding?.completed) {
+          router.push('/onboarding')
+          return
+        }
+
         const syncedRatings = await syncLocalRatings(email || 'demo@user.com')
         const map: Record<string, number> = {}
         syncedRatings.forEach((r: any) => {
           if (r.movieId) map[String(r.movieId)] = r.rating
         })
         setUserRatings(map)
+        setPageReady(true)
+        loadRecs(userState.onboarding?.responses || {}, userState.favoriteCategories || [])
       } catch (error) {
         console.error('Failed to sync ratings:', error)
+        router.push('/onboarding')
       }
     })()
 
     setTourReady(true)
     setTourCompleted(!!localStorage.getItem('cinescope_tour_done_v1'))
-
-    loadRecs()
 
     fetch('/api/friends', {
       method: 'POST',
@@ -154,16 +159,15 @@ export default function Dashboard() {
     }).catch(() => {})
   }, [status]) // eslint-disable-line
 
-  const loadRecs = async (boostGenres?: string[]) => {
+  const loadRecs = async (responses = onboardingResponses, boostGenres: string[] = favGenres) => {
     setIsLoadingRecs(true)
     try {
-      const raw = localStorage.getItem('onboardingAnswers')
-      if (!raw) {
+      if (!responses || Object.keys(responses).length === 0) {
         router.push('/onboarding')
         return
       }
 
-      const profile = analyzePersonality(JSON.parse(raw))
+      const profile = analyzePersonality(responses as Record<number, any>)
       if (boostGenres?.length) {
         boostGenres.forEach(id => {
           profile.preferredGenres[id] = 0.95
@@ -262,9 +266,12 @@ export default function Dashboard() {
     }
   }
 
-  const addPersonFav = (person: any) => {
+  const addPersonFav = async (person: any) => {
     const email = session?.user?.email || 'demo@user.com'
     const ok = persistentStorage.addFavoritePerson(email, person)
+    if (ok) {
+      await patchUserState({ favoritePeople: persistentStorage.getFavoritePeople(email) })
+    }
     toast(ok ? `✓ ${person.name} added to favorites` : 'Already in favorites', ok ? 'ok' : 'info')
     if (ok) {
       setShowSearch(false)
@@ -295,15 +302,25 @@ export default function Dashboard() {
     }
   }
 
-  const toggleGenre = (id: string) => {
+  const toggleGenre = async (id: string) => {
     const email = session?.user?.email || ''
     if (!email) return
     const added = persistentStorage.toggleFavoriteCategory(email, id)
     const updated = persistentStorage.getFavoriteCategories(email)
+    await patchUserState({ favoriteCategories: updated })
     setFavGenres(updated)
     const genre = GENRES.find(x => x.id === id)
     toast(added ? `${genre?.emoji} ${genre?.name} pinned - refreshing…` : `${genre?.name} unpinned`, added ? 'ok' : 'info')
-    if (added) loadRecs(updated)
+    if (added) loadRecs(onboardingResponses, updated)
+  }
+
+  const toggleDailyFact = async () => {
+    if (!dailyFactState) return
+    const nextEnabled = !dailyFactState.enabled
+    await patchUserState({ dailyFact: { enabled: nextEnabled } })
+    setDailyFactState(prev => prev ? { ...prev, enabled: nextEnabled, isNew: false } : prev)
+    setShowUserMenu(false)
+    toast(nextEnabled ? 'Fact of the day enabled' : 'Fact of the day disabled', 'info')
   }
 
   const replayTour = () => {
@@ -411,7 +428,12 @@ export default function Dashboard() {
         <YouTubeTrailerBackground autoplay muted showControls={false} loop isDashboard className="w-full h-full" />
       </div>
 
-      {session?.user?.email && <DailyFactPopup userEmail={session.user.email} enabled={tourCompleted} />}
+      {dailyFactState?.fact && (
+        <DailyFactPopup
+          factData={{ fact: dailyFactState.fact, isNew: !!dailyFactState.isNew }}
+          enabled={tourCompleted && dailyFactState.enabled}
+        />
+      )}
 
       {showTourComp && (
         <OnboardingTour
@@ -562,7 +584,7 @@ export default function Dashboard() {
               </button>
 
               <button
-                onClick={() => loadRecs(favGenres)}
+                onClick={() => loadRecs(onboardingResponses, favGenres)}
                 disabled={isLoadingRecs}
                 data-tour="refresh-ai"
                 className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-purple-200 text-sm transition-all disabled:opacity-50"
@@ -627,6 +649,21 @@ export default function Dashboard() {
                         {menuActionLoading === 'change-username' && (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-white/50" />
                         )}
+                      </button>
+
+                      <div className="my-1 border-t border-white/8" />
+                      <button
+                        onClick={toggleDailyFact}
+                        disabled={menuActionLoading !== null || !dailyFactState}
+                        className="w-full text-left px-4 py-2.5 text-white/75 hover:text-white hover:bg-white/8 transition-colors flex items-center justify-between gap-2.5 text-sm disabled:opacity-60"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                          Fact of the Day
+                        </div>
+                        <span className={`text-xs ${dailyFactState?.enabled ? 'text-green-400' : 'text-white/35'}`}>
+                          {dailyFactState?.enabled ? 'On' : 'Off'}
+                        </span>
                       </button>
 
                       <div className="my-1 border-t border-white/8" />

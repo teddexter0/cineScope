@@ -17,6 +17,35 @@ type RatingPayload = WatchlistPayload & {
   review?: string | null
 }
 
+export type UserStatePayload = {
+  onboarding: {
+    completed: boolean
+    responses: Record<string, any>
+  }
+  preferences?: {
+    personalityType?: string | null
+    genreWeights?: Record<string, number>
+  }
+  favoritePeople: any[]
+  favoriteCategories: string[]
+  dailyFact: {
+    enabled: boolean
+    today?: string
+    fact?: any
+    isNew?: boolean
+    seenIds?: number[]
+    lastDate?: string | null
+    lastFactId?: number | null
+  }
+}
+
+export type UserStatePatch = {
+  onboarding?: Partial<UserStatePayload['onboarding']>
+  favoritePeople?: any[]
+  favoriteCategories?: string[]
+  dailyFact?: Partial<UserStatePayload['dailyFact']>
+}
+
 async function readJson(response: Response) {
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
@@ -123,4 +152,54 @@ export async function syncLocalRatings(userEmail: string) {
   cloud = await fetchCloudRatings()
   persistentStorage.setRatings(userEmail, cloud)
   return cloud
+}
+
+export async function fetchUserState(): Promise<UserStatePayload> {
+  return readJson(await fetch('/api/user-state', { cache: 'no-store' }))
+}
+
+export async function patchUserState(payload: UserStatePatch) {
+  return readJson(await fetch('/api/user-state', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }))
+}
+
+export async function syncLocalUserState(userEmail: string): Promise<UserStatePayload> {
+  const cloud = await fetchUserState()
+  const localFavoritePeople = persistentStorage.getFavoritePeople(userEmail)
+  const localFavoriteCategories = persistentStorage.getFavoriteCategories(userEmail)
+  const localOnboardingRaw = typeof window !== 'undefined' ? localStorage.getItem('onboardingAnswers') : null
+  const localOnboardingCompleted = typeof window !== 'undefined' ? localStorage.getItem('onboardingCompleted') === 'true' : false
+
+  const nextPayload: Partial<UserStatePayload> = {}
+
+  if ((!cloud.favoritePeople || cloud.favoritePeople.length === 0) && localFavoritePeople.length > 0) {
+    nextPayload.favoritePeople = localFavoritePeople
+  }
+
+  if ((!cloud.favoriteCategories || cloud.favoriteCategories.length === 0) && localFavoriteCategories.length > 0) {
+    nextPayload.favoriteCategories = localFavoriteCategories
+  }
+
+  if ((!cloud.onboarding?.completed || Object.keys(cloud.onboarding.responses || {}).length === 0) && (localOnboardingCompleted || localOnboardingRaw)) {
+    nextPayload.onboarding = {
+      completed: localOnboardingCompleted,
+      responses: localOnboardingRaw ? JSON.parse(localOnboardingRaw) : {},
+    }
+  }
+
+  const merged = Object.keys(nextPayload).length > 0
+    ? await patchUserState(nextPayload)
+    : cloud
+
+  persistentStorage.setFavoritePeople(userEmail, merged.favoritePeople || [])
+  persistentStorage.setFavoriteCategories(userEmail, merged.favoriteCategories || [])
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('onboardingAnswers', JSON.stringify(merged.onboarding?.responses || {}))
+    localStorage.setItem('onboardingCompleted', merged.onboarding?.completed ? 'true' : 'false')
+  }
+
+  return merged
 }
