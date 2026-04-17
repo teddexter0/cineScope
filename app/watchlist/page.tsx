@@ -9,6 +9,12 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { Star, Trash2, Play, ArrowLeft, Upload, CheckCircle, XCircle, Loader, Eye, EyeOff, Film, Tv } from 'lucide-react'
 import { persistentStorage } from '@/lib/persistent-storage'
+import {
+  deleteWatchlistItem,
+  saveWatchlistItem,
+  syncLocalWatchlist,
+  updateWatchlistStatus,
+} from '@/lib/client-media-sync'
 
 interface ImportResult {
   total: number
@@ -43,30 +49,11 @@ export default function WatchlistPage() {
   const loadWatchlist = useCallback(async () => {
     try {
       const userEmail = session?.user?.email || 'demo@user.com'
-      const storedWatchlist = persistentStorage.getWatchlist(userEmail)
-      setWatchlist(storedWatchlist)
-
-      // Optional: Try to sync with server
-      try {
-        const response = await fetch('/api/watchlist')
-        const data = await response.json()
-        if (data.success && data.watchlist?.length > 0) {
-          const serverWatchlist = data.watchlist
-          const mergedWatchlist = [...storedWatchlist]
-          serverWatchlist.forEach((serverItem: any) => {
-            const exists = mergedWatchlist.find((local: any) => local.movieId === serverItem.movieId)
-            if (!exists) mergedWatchlist.push(serverItem)
-          })
-          if (mergedWatchlist.length > storedWatchlist.length) {
-            persistentStorage.setWatchlist(userEmail, mergedWatchlist)
-            setWatchlist(mergedWatchlist)
-          }
-        }
-      } catch {
-        // Server sync optional, ignore failure
-      }
+      const syncedWatchlist = await syncLocalWatchlist(userEmail)
+      setWatchlist(syncedWatchlist)
     } catch (error) {
       console.error('Error loading watchlist:', error)
+      setWatchlist(persistentStorage.getWatchlist(session?.user?.email || 'demo@user.com'))
     } finally {
       setIsLoading(false)
     }
@@ -84,22 +71,34 @@ export default function WatchlistPage() {
 
   const removeFromWatchlist = async (movieId: string) => {
     const userEmail = session?.user?.email || 'demo@user.com'
-    persistentStorage.removeFromWatchlist(userEmail, movieId)
-    setWatchlist(persistentStorage.getWatchlist(userEmail))
     try {
-      await fetch(`/api/watchlist?movieId=${movieId}`, { method: 'DELETE' })
-    } catch { /* background sync, not critical */ }
+      await deleteWatchlistItem(movieId)
+      const updated = watchlist.filter(item => item.movieId !== movieId)
+      persistentStorage.setWatchlist(userEmail, updated)
+      setWatchlist(updated)
+    } catch (error) {
+      console.error('Failed to remove watchlist item:', error)
+    }
   }
 
-  const toggleWatched = (movieId: string, currentStatus: string) => {
+  const toggleWatched = async (movieId: string, currentStatus: string) => {
     const userEmail = session?.user?.email || 'demo@user.com'
-    if (currentStatus === 'watched') {
-      persistentStorage.markAsToWatch(userEmail, movieId)
-    } else {
-      persistentStorage.markAsWatched(userEmail, movieId)
+    try {
+      const nextStatus = currentStatus === 'watched' ? 'to_watch' : 'watched'
+      await updateWatchlistStatus(movieId, nextStatus)
+      const updated = watchlist.map(item => item.movieId === movieId
+        ? {
+            ...item,
+            status: nextStatus,
+            watchedAt: nextStatus === 'watched' ? new Date().toISOString() : null,
+          }
+        : item)
+      persistentStorage.setWatchlist(userEmail, updated)
+      setWatchlist(updated)
+
       // Log to activity feed
-      const item = watchlist.find(m => m.movieId === movieId)
-      if (item) {
+      const item = updated.find(m => m.movieId === movieId)
+      if (item && nextStatus === 'watched') {
         fetch('/api/friends', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -114,8 +113,9 @@ export default function WatchlistPage() {
           }),
         }).catch(() => {})
       }
+    } catch (error) {
+      console.error('Failed to update watch status:', error)
     }
-    setWatchlist(persistentStorage.getWatchlist(userEmail))
   }
 
   // Derived counts for tab labels
@@ -208,8 +208,25 @@ export default function WatchlistPage() {
           overview: tmdbMovie.overview,
           media_type: tmdbMovie.media_type || 'movie'
         }
-        const added = persistentStorage.addToWatchlist(userEmail, movieData)
-        if (added) { result.imported++ } else { result.skipped++ }
+        try {
+          await saveWatchlistItem({
+            movieId: movieData.id,
+            title: movieData.title,
+            poster_path: movieData.poster_path,
+            vote_average: movieData.vote_average,
+            release_date: movieData.release_date,
+            overview: movieData.overview,
+            media_type: movieData.media_type,
+          })
+          persistentStorage.addToWatchlist(userEmail, movieData)
+          result.imported++
+        } catch (error: any) {
+          if (error?.message?.includes('already')) {
+            result.skipped++
+          } else {
+            result.failed.push(item.title)
+          }
+        }
         setImportProgress({
           processed: index + 1,
           total: items.length,
@@ -220,7 +237,8 @@ export default function WatchlistPage() {
         })
         await new Promise(r => setTimeout(r, 250))
       }
-      setWatchlist(persistentStorage.getWatchlist(userEmail))
+      const synced = await syncLocalWatchlist(userEmail)
+      setWatchlist(synced)
       setImportResult(result)
     } catch (err) {
       console.error('IMDB import error:', err)

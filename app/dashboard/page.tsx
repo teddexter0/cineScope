@@ -17,6 +17,7 @@ import DailyFactPopup from '@/app/components/DailyFactPopup'
 import MovieCard from '@/app/components/MovieCard'
 import OnboardingTour from '@/app/components/OnboardingTour'
 import { persistentStorage } from '@/lib/persistent-storage'
+import { saveRating, saveWatchlistItem, syncLocalRatings } from '@/lib/client-media-sync'
 
 const GENRES = [
   { id: '28', name: 'Action', emoji: '' },
@@ -123,12 +124,18 @@ export default function Dashboard() {
     const email = session?.user?.email || ''
     if (email) setFavGenres(persistentStorage.getFavoriteCategories(email))
 
-    const stored = persistentStorage.getRatings(email || 'demo@user.com')
-    const map: Record<string, number> = {}
-    stored.forEach((r: any) => {
-      if (r.movieId) map[String(r.movieId)] = r.rating
-    })
-    setUserRatings(map)
+    void (async () => {
+      try {
+        const syncedRatings = await syncLocalRatings(email || 'demo@user.com')
+        const map: Record<string, number> = {}
+        syncedRatings.forEach((r: any) => {
+          if (r.movieId) map[String(r.movieId)] = r.rating
+        })
+        setUserRatings(map)
+      } catch (error) {
+        console.error('Failed to sync ratings:', error)
+      }
+    })()
 
     setTourReady(true)
     setTourCompleted(!!localStorage.getItem('cinescope_tour_done_v1'))
@@ -224,9 +231,19 @@ export default function Dashboard() {
 
   const addToWatchlist = async (movie: any) => {
     const email = session?.user?.email || 'demo@user.com'
-    const ok = persistentStorage.addToWatchlist(email, movie)
-    toast(ok ? `✓ Saved "${movie.title || movie.name}"` : 'Already saved', ok ? 'ok' : 'info')
-    if (ok) {
+    try {
+      await saveWatchlistItem({
+        movieId: movie.id,
+        title: movie.title || movie.name,
+        poster_path: movie.poster_path,
+        vote_average: movie.vote_average,
+        release_date: movie.release_date || movie.first_air_date,
+        overview: movie.overview,
+        media_type: movie.media_type,
+      })
+      persistentStorage.addToWatchlist(email, movie)
+      toast(`Saved "${movie.title || movie.name}"`, 'ok')
+
       fetch('/api/friends', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -240,20 +257,8 @@ export default function Dashboard() {
           posterPath: movie.poster_path,
         }),
       }).catch(() => {})
-
-      fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          movieId: movie.id,
-          title: movie.title || movie.name,
-          poster_path: movie.poster_path,
-          vote_average: movie.vote_average,
-          release_date: movie.release_date || movie.first_air_date,
-          overview: movie.overview,
-          media_type: movie.media_type,
-        }),
-      }).catch(() => {})
+    } catch (error: any) {
+      toast(error?.message?.includes('already') ? 'Already saved' : 'Failed to save watchlist item', 'info')
     }
   }
 
@@ -279,16 +284,14 @@ export default function Dashboard() {
       review,
       media_type: movie.media_type || 'movie',
     }
-    const ok = persistentStorage.addRating(email, item)
-    if (ok) {
+    try {
+      await saveRating(item)
+      persistentStorage.addRating(email, item)
       setUserRatings(prev => ({ ...prev, [String(movie.id)]: rating }))
       setRecStats(prev => ({ ...prev, accuracy: Math.min(99, prev.accuracy + 1) }))
       toast(`Rated "${item.title}" ${rating}/10`, 'ok')
-      fetch('/api/movies/rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
-      }).catch(() => {})
+    } catch {
+      toast('Failed to save rating', 'info')
     }
   }
 
