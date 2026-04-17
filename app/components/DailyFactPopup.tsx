@@ -21,9 +21,10 @@ interface Props {
     isNew: boolean
   } | null
   enabled?: boolean
+  openNonce?: number
 }
 
-export default function DailyFactPopup({ factData, enabled = true }: Props) {
+export default function DailyFactPopup({ factData, enabled = true, openNonce = 0 }: Props) {
   const [visible, setVisible] = useState(false)
   const [fact, setFact] = useState<CineFact | null>(null)
 
@@ -38,6 +39,13 @@ export default function DailyFactPopup({ factData, enabled = true }: Props) {
       return () => clearTimeout(timer)
     }
   }, [factData, enabled])
+
+  useEffect(() => {
+    if (enabled && factData?.fact && openNonce > 0) {
+      setFact(factData.fact)
+      setVisible(true)
+    }
+  }, [enabled, factData, openNonce])
 
   if (!fact) return null
 
