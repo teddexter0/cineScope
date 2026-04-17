@@ -8,6 +8,22 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
+async function findUserByEmailInsensitive(email: string) {
+  const rows = await prisma.$queryRaw<Array<{
+    id: string
+    email: string
+    name: string | null
+    username: string | null
+    password: string | null
+  }>>`
+    SELECT id, email, name, username, password
+    FROM users
+    WHERE LOWER(email) = LOWER(${email})
+    LIMIT 1
+  `
+  return rows[0] ?? null
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -28,9 +44,7 @@ export const authOptions: NextAuthOptions = {
         try {
           console.log('Attempting login for:', normalizedEmail)
 
-          const user = await prisma.user.findFirst({
-            where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
-          })
+          const user = await findUserByEmailInsensitive(normalizedEmail)
 
           if (user?.password) {
             const passwordMatch = await bcrypt.compare(credentials.password, user.password)
