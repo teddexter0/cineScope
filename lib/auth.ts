@@ -45,6 +45,7 @@ export const authOptions: NextAuthOptions = {
           console.log('Attempting login for:', normalizedEmail)
 
           const user = await findUserByEmailInsensitive(normalizedEmail)
+          console.log('[auth] user found:', !!user, 'has password:', !!user?.password)
 
           if (user?.password) {
             const passwordMatch = await bcrypt.compare(credentials.password, user.password)
