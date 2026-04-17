@@ -3,6 +3,17 @@
 // Persistent storage utility that actually works across page navigation
 class PersistentStorage {
   private storagePrefix = 'cinescope_'
+
+  private normalizeWatchlistIdentity(movie: any) {
+    const movieId = movie.movieId?.toString?.() || movie.id?.toString?.() || ''
+    const title = String(movie.title || movie.name || movie.displayTitle || '')
+      .trim()
+      .toLowerCase()
+    const release = String(movie.release_date || movie.first_air_date || '')
+    const year = release ? new Date(release).getFullYear().toString() : ''
+    const mediaType = String(movie.media_type || 'movie')
+    return { movieId, title, year, mediaType }
+  }
   
   // Get user-specific storage key
   private getUserKey(userEmail: string, type: string): string {
@@ -37,9 +48,18 @@ class PersistentStorage {
   addToWatchlist(userEmail: string, movie: any): boolean {
     try {
       const currentWatchlist = this.getWatchlist(userEmail)
+      const candidate = this.normalizeWatchlistIdentity(movie)
 
-      // Check if already exists
-      const exists = currentWatchlist.find(item => item.movieId === movie.id?.toString())
+      // Prefer exact TMDB id, then fall back to normalized title/year/media identity.
+      const exists = currentWatchlist.find(item => {
+        const existing = this.normalizeWatchlistIdentity(item)
+        if (candidate.movieId && existing.movieId) return existing.movieId === candidate.movieId
+        return (
+          existing.title === candidate.title &&
+          existing.year === candidate.year &&
+          existing.mediaType === candidate.mediaType
+        )
+      })
       if (exists) {
         return false // Already in watchlist
       }

@@ -17,14 +17,18 @@ const CATEGORY_META: Record<CineFact['category'], { icon: React.ReactNode; label
 
 interface Props {
   userEmail: string
+  enabled?: boolean
 }
 
-export default function DailyFactPopup({ userEmail }: Props) {
+export default function DailyFactPopup({ userEmail, enabled = true }: Props) {
   const [visible, setVisible] = useState(false)
   const [fact, setFact] = useState<CineFact | null>(null)
 
   useEffect(() => {
-    if (!userEmail) return
+    if (!userEmail || !enabled) {
+      setVisible(false)
+      return
+    }
     const { fact: dailyFact, isNew } = getDailyFact(userEmail)
     setFact(dailyFact)
     // Only pop up automatically if it's a new (today's) fact
@@ -32,7 +36,7 @@ export default function DailyFactPopup({ userEmail }: Props) {
       const timer = setTimeout(() => setVisible(true), 1800)
       return () => clearTimeout(timer)
     }
-  }, [userEmail])
+  }, [userEmail, enabled])
 
   if (!fact) return null
 

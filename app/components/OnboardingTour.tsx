@@ -14,10 +14,15 @@ interface Step {
   title: string
   body: string
   position: 'top' | 'bottom' | 'left' | 'right'
+  targetMaxWidth?: number
+  targetMaxHeight?: number
+  offsetX?: number
+  offsetY?: number
 }
 
 interface Props {
   onReady?: () => void
+  onFinish?: () => void
 }
 
 interface Rect {
@@ -33,6 +38,9 @@ const STEPS: Step[] = [
     title: 'Your AI picks',
     body: 'Cards personalised for you. Hover any poster to read the synopsis, then rate or save it.',
     position: 'bottom',
+    targetMaxWidth: 220,
+    targetMaxHeight: 68,
+    offsetX: -48,
   },
   {
     selector: '[data-tour="like-btn"]',
@@ -70,18 +78,19 @@ const KEY = 'cinescope_tour_done_v1'
 const TARGET_MAX_WIDTH = 320
 const TARGET_MAX_HEIGHT = 140
 
-function getViewportRect(selector: string): Rect | null {
+function getViewportRect(step: Step): Rect | null {
+  const selector = step.selector
   const el = document.querySelector(selector)
   if (!el) return null
   const r = el.getBoundingClientRect()
-  const width = Math.min(r.width, TARGET_MAX_WIDTH)
-  const height = Math.min(r.height, TARGET_MAX_HEIGHT)
-  const left = r.left + (r.width - width) / 2
-  const top = r.top + (r.height - height) / 2
+  const width = Math.min(r.width, step.targetMaxWidth ?? TARGET_MAX_WIDTH)
+  const height = Math.min(r.height, step.targetMaxHeight ?? TARGET_MAX_HEIGHT)
+  const left = r.left + (r.width - width) / 2 + (step.offsetX ?? 0)
+  const top = r.top + (r.height - height) / 2 + (step.offsetY ?? 0)
   return { top, left, width, height }
 }
 
-export default function OnboardingTour({ onReady }: Props) {
+export default function OnboardingTour({ onReady, onFinish }: Props) {
   const [visible, setVisible] = useState(false)
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<Rect | null>(null)
@@ -90,13 +99,14 @@ export default function OnboardingTour({ onReady }: Props) {
   const cur = STEPS[step]
 
   const measure = useCallback((s: number) => {
-    const r = getViewportRect(STEPS[s].selector)
+    const stepConfig = STEPS[s]
+    const r = getViewportRect(stepConfig)
     if (!r) return
     setRect(r)
 
     const width = 272
     const centerX = r.left + r.width / 2
-    const pos = STEPS[s].position
+    const pos = stepConfig.position
     let top = 0
     let left = 0
 
@@ -152,6 +162,7 @@ export default function OnboardingTour({ onReady }: Props) {
     setVisible(false)
     localStorage.setItem(KEY, 'true')
     onReady?.()
+    onFinish?.()
   }
 
   const next = () => (
@@ -167,7 +178,7 @@ export default function OnboardingTour({ onReady }: Props) {
   return (
     <>
       <div
-        className="fixed inset-0 z-[200] pointer-events-none"
+        className="fixed inset-0 z-[200] pointer-events-auto"
         style={{ background: 'rgba(0,0,0,0.52)' }}
       />
 

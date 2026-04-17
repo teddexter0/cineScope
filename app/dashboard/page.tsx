@@ -96,6 +96,7 @@ export default function Dashboard() {
   const [tourReady, setTourReady] = useState(false)
   const [tourKey, setTourKey] = useState(0)
   const [showTourComp, setShowTourComp] = useState(true)
+  const [tourCompleted, setTourCompleted] = useState(false)
   const [navLoading, setNavLoading] = useState<string | null>(null)
   const [menuActionLoading, setMenuActionLoading] = useState<string | null>(null)
 
@@ -130,6 +131,7 @@ export default function Dashboard() {
     setUserRatings(map)
 
     setTourReady(true)
+    setTourCompleted(!!localStorage.getItem('cinescope_tour_done_v1'))
 
     loadRecs()
 
@@ -303,6 +305,7 @@ export default function Dashboard() {
 
   const replayTour = () => {
     localStorage.removeItem('cinescope_tour_done_v1')
+    setTourCompleted(false)
     setShowTourComp(false)
     setShowUserMenu(false)
     setTimeout(() => {
@@ -405,12 +408,13 @@ export default function Dashboard() {
         <YouTubeTrailerBackground autoplay muted showControls={false} loop isDashboard className="w-full h-full" />
       </div>
 
-      {session?.user?.email && <DailyFactPopup userEmail={session.user.email} />}
+      {session?.user?.email && <DailyFactPopup userEmail={session.user.email} enabled={tourCompleted} />}
 
       {showTourComp && (
         <OnboardingTour
           key={tourKey}
           onReady={() => setTourReady(true)}
+          onFinish={() => setTourCompleted(true)}
         />
       )}
 
@@ -789,14 +793,14 @@ export default function Dashboard() {
 
         <section className="px-4 pb-24 md:px-6">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-2.5 mb-5" data-tour="ai-recs">
+            <div className="flex items-center gap-2.5 mb-5">
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg,#a855f7,#ec4899)' }}
               >
                 <Sparkles className="w-3.5 h-3.5 text-white" />
               </div>
-              <div>
+              <div data-tour="ai-recs">
                 <h2 className="text-white font-semibold text-base md:text-lg" style={{ letterSpacing: '-0.02em' }}>
                   Your AI-Curated Picks
                 </h2>
