@@ -17,7 +17,7 @@ import DailyFactPopup from '@/app/components/DailyFactPopup'
 import MovieCard from '@/app/components/MovieCard'
 import OnboardingTour from '@/app/components/OnboardingTour'
 import { persistentStorage } from '@/lib/persistent-storage'
-import { patchUserState, saveRating, saveWatchlistItem, syncLocalRatings, syncLocalUserState, type UserStatePayload } from '@/lib/client-media-sync'
+import { patchUserState, saveRating, saveWatchlistItem, syncLocalRatings, syncLocalUserState, syncLocalWatchlist, type UserStatePayload } from '@/lib/client-media-sync'
 
 const GENRES = [
   { id: '28', name: 'Action', emoji: '' },
@@ -96,6 +96,7 @@ export default function Dashboard() {
   const [userRatings, setUserRatings] = useState<Record<string, number>>({})
   const [onboardingResponses, setOnboardingResponses] = useState<Record<string, any>>({})
   const [dailyFactState, setDailyFactState] = useState<UserStatePayload['dailyFact'] | null>(null)
+  const [dailyFactOpenNonce, setDailyFactOpenNonce] = useState(0)
   const [tourReady, setTourReady] = useState(false)
   const [tourKey, setTourKey] = useState(0)
   const [showTourComp, setShowTourComp] = useState(true)
@@ -131,6 +132,7 @@ export default function Dashboard() {
         }
 
         const syncedRatings = await syncLocalRatings(email || 'demo@user.com')
+        await syncLocalWatchlist(email || 'demo@user.com')
         const map: Record<string, number> = {}
         syncedRatings.forEach((r: any) => {
           if (r.movieId) map[String(r.movieId)] = r.rating
@@ -319,8 +321,17 @@ export default function Dashboard() {
     const nextEnabled = !dailyFactState.enabled
     await patchUserState({ dailyFact: { enabled: nextEnabled } })
     setDailyFactState(prev => prev ? { ...prev, enabled: nextEnabled, isNew: false } : prev)
+    if (nextEnabled) {
+      setDailyFactOpenNonce(prev => prev + 1)
+    }
     setShowUserMenu(false)
     toast(nextEnabled ? 'Fact of the day enabled' : 'Fact of the day disabled', 'info')
+  }
+
+  const openDailyFact = () => {
+    if (!dailyFactState?.enabled) return
+    setDailyFactOpenNonce(prev => prev + 1)
+    setShowUserMenu(false)
   }
 
   const replayTour = () => {
@@ -432,6 +443,7 @@ export default function Dashboard() {
         <DailyFactPopup
           factData={{ fact: dailyFactState.fact, isNew: !!dailyFactState.isNew }}
           enabled={tourCompleted && dailyFactState.enabled}
+          openNonce={dailyFactOpenNonce}
         />
       )}
 
@@ -664,6 +676,19 @@ export default function Dashboard() {
                         <span className={`text-xs ${dailyFactState?.enabled ? 'text-green-400' : 'text-white/35'}`}>
                           {dailyFactState?.enabled ? 'On' : 'Off'}
                         </span>
+                      </button>
+
+                      <div className="my-1 border-t border-white/8" />
+                      <button
+                        onClick={openDailyFact}
+                        disabled={menuActionLoading !== null || !dailyFactState?.enabled}
+                        className="w-full text-left px-4 py-2.5 text-white/75 hover:text-white hover:bg-white/8 transition-colors flex items-center justify-between gap-2.5 text-sm disabled:opacity-60"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Film className="w-3.5 h-3.5 text-yellow-300" />
+                          Today&apos;s Fact
+                        </div>
+                        <span className="text-xs text-white/35">Open</span>
                       </button>
 
                       <div className="my-1 border-t border-white/8" />

@@ -93,18 +93,28 @@ export async function syncLocalWatchlist(userEmail: string) {
       continue
     }
 
-    await saveWatchlistItem({
-      movieId: item.movieId,
-      title: item.title,
-      poster_path: item.poster_path,
-      vote_average: item.vote_average,
-      release_date: item.release_date,
-      overview: item.overview,
-      media_type: item.media_type,
-    })
+    try {
+      await saveWatchlistItem({
+        movieId: item.movieId,
+        title: item.title,
+        poster_path: item.poster_path,
+        vote_average: item.vote_average,
+        release_date: item.release_date,
+        overview: item.overview,
+        media_type: item.media_type,
+      })
+      cloudIds.add(String(item.movieId))
 
-    if (item.status === 'watched') {
-      await updateWatchlistStatus(String(item.movieId), 'watched')
+      if (item.status === 'watched') {
+        await updateWatchlistStatus(String(item.movieId), 'watched')
+      }
+    } catch (error: any) {
+      // Keep merging even if one legacy/local item is malformed or already exists.
+      if (error?.message?.toLowerCase?.().includes('already')) {
+        cloudIds.add(String(item.movieId))
+        continue
+      }
+      console.warn('[watchlist sync] skipping item', item?.movieId, error?.message || error)
     }
   }
 
@@ -137,16 +147,21 @@ export async function syncLocalRatings(userEmail: string) {
       continue
     }
 
-    await saveRating({
-      movieId: item.movieId,
-      title: item.title,
-      poster_path: item.poster_path,
-      vote_average: item.vote_average,
-      release_date: item.release_date,
-      media_type: item.media_type,
-      rating: item.rating,
-      review: item.review,
-    })
+    try {
+      await saveRating({
+        movieId: item.movieId,
+        title: item.title,
+        poster_path: item.poster_path,
+        vote_average: item.vote_average,
+        release_date: item.release_date,
+        media_type: item.media_type,
+        rating: item.rating,
+        review: item.review,
+      })
+      cloudIds.add(String(item.movieId))
+    } catch (error) {
+      console.warn('[ratings sync] skipping item', item?.movieId, error)
+    }
   }
 
   cloud = await fetchCloudRatings()
