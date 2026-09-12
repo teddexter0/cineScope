@@ -32,14 +32,17 @@ export default function SocialPage() {
   const [searchResults, setSearchResults] = useState<Friend[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [searchError, setSearchError] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
+  const [pendingFriend, setPendingFriend] = useState<string | null>(null)
 
   const myEmail    = session?.user?.email    || ''
-  const myName     = session?.user?.name     || ''
-  const myUsername = session?.user?.username || ''
 
   const loadAll = useCallback(async () => {
     if (!myEmail) return
     setIsLoading(true)
+    setLoadError('')
     try {
       const [fRes, aRes, lRes] = await Promise.all([
         fetch(`/api/friends?me=${encodeURIComponent(myEmail)}&view=friends`),
@@ -47,61 +50,80 @@ export default function SocialPage() {
         fetch(`/api/friends?me=${encodeURIComponent(myEmail)}&view=leaderboard`),
       ])
       const [fData, aData, lData] = await Promise.all([fRes.json(), aRes.json(), lRes.json()])
+      if (!fRes.ok || !aRes.ok || !lRes.ok) {
+        throw new Error(fData.error || aData.error || lData.error || 'Could not load social data')
+      }
       setFriends(fData.friends || [])
       setActivity(aData.activity || [])
       setLeaderboard(lData.leaderboard || [])
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Could not load social data')
     } finally {
       setIsLoading(false)
     }
   }, [myEmail])
 
-  // Register this user + load data when authenticated
+  // Load persisted social data when authenticated.
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/auth/signin'); return }
     if (status !== 'authenticated') return
-
-    fetch('/api/friends', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'register', email: myEmail, name: myName, username: myUsername || undefined }),
-    }).then(() => loadAll())
-  }, [status, router, myEmail, myName, myUsername, loadAll])
+    loadAll()
+  }, [status, router, loadAll])
 
   const searchUsers = async () => {
-    if (searchQuery.length < 2) return
+    const query = searchQuery.trim()
+    if (query.length < 2) return
     setIsSearching(true)
+    setSearchError('')
+    setHasSearched(true)
     try {
-      const res = await fetch(`/api/friends?me=${encodeURIComponent(myEmail)}&view=search&q=${encodeURIComponent(searchQuery)}`)
+      const res = await fetch(`/api/friends?view=search&q=${encodeURIComponent(query)}`)
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Search is unavailable right now')
       setSearchResults(data.results || [])
+    } catch (error) {
+      setSearchResults([])
+      setSearchError(error instanceof Error ? error.message : 'Search is unavailable right now')
     } finally {
       setIsSearching(false)
     }
   }
 
   const addFriend = async (friend: Friend) => {
-    const res = await fetch('/api/friends', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'add', myEmail, query: friend.username }),
-    })
-    const data = await res.json()
-    if (data.success) {
-      setFriends(prev => [...prev, friend])
+    if (pendingFriend) return
+    setPendingFriend(friend.email)
+    try {
+      const res = await fetch('/api/friends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', targetEmail: friend.email }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not add friend')
+      const addedFriend = data.friend || friend
+      setFriends(prev => prev.some(f => f.email === addedFriend.email) ? prev : [...prev, addedFriend])
       setSearchResults(prev => prev.filter(r => r.email !== friend.email))
-      showToast(`${friend.name} added!`, 'success')
-    } else {
-      showToast(data.error || 'Could not add friend', 'error')
+      showToast(`${addedFriend.name} added!`, 'success')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not add friend', 'error')
+    } finally {
+      setPendingFriend(null)
     }
   }
 
   const removeFriend = async (friendEmail: string) => {
-    await fetch('/api/friends', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'remove', myEmail, friendEmail }),
-    })
-    setFriends(prev => prev.filter(f => f.email !== friendEmail))
+    try {
+      const res = await fetch('/api/friends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove', friendEmail }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not remove friend')
+      setFriends(prev => prev.filter(f => f.email !== friendEmail))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not remove friend', 'error')
+    }
   }
 
   const showToast = (msg: string, type: 'success' | 'error') => {
@@ -142,6 +164,13 @@ export default function SocialPage() {
           <p className="text-purple-200 mt-1">Friends, leaderboard, and what everyone&apos;s been watching</p>
         </div>
 
+        {loadError && (
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-red-400/30 bg-red-500/15 px-4 py-3 text-sm text-red-100">
+            <span>{loadError}</span>
+            <button onClick={loadAll} className="rounded-lg bg-white/10 px-3 py-1.5 font-medium hover:bg-white/20">Retry</button>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {[
@@ -170,7 +199,12 @@ export default function SocialPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
                   <input
                     type="text" value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                    onChange={e => {
+                      setSearchQuery(e.target.value)
+                      setSearchResults([])
+                      setSearchError('')
+                      setHasSearched(false)
+                    }}
                     onKeyDown={e => e.key === 'Enter' && searchUsers()}
                     placeholder="e.g. john.doe, cinefan42…"
                     className="w-full bg-white/10 border border-white/20 rounded-lg pl-9 pr-4 py-2 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
@@ -194,16 +228,20 @@ export default function SocialPage() {
                         <span className="text-green-400 text-xs flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Following</span>
                       ) : (
                         <button onClick={() => addFriend(u)}
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1">
-                          <UserPlus className="w-3 h-3" /> Add
+                          disabled={pendingFriend !== null}
+                          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1">
+                          {pendingFriend === u.email ? 'Adding…' : <><UserPlus className="w-3 h-3" /> Add</>}
                         </button>
                       )}
                     </div>
                   ))}
                 </div>
               )}
-              {searchQuery.length > 1 && searchResults.length === 0 && !isSearching && (
-                <p className="text-white/40 text-xs mt-3 text-center">No users found for &quot;{searchQuery}&quot;. They may not have signed in yet.</p>
+              {searchError && !isSearching && (
+                <p className="text-red-300 text-xs mt-3 text-center">{searchError}</p>
+              )}
+              {hasSearched && !searchError && searchResults.length === 0 && !isSearching && (
+                <p className="text-white/40 text-xs mt-3 text-center">No users found for &quot;{searchQuery.trim()}&quot;.</p>
               )}
             </div>
 

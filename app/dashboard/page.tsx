@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Film, Search, Star, Plus, Clock, Sparkles, User,
   LogOut, Brain, Zap, AtSign, CheckCircle, AlertCircle,
-  X, Heart, HelpCircle, Loader2,
+  X, Heart, HelpCircle, Loader2, Users,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -585,6 +585,17 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-1.5 md:gap-2">
+              <button
+                onClick={() => navTo('/social')}
+                disabled={menuActionLoading !== null}
+                title="Find and add friends"
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-blue-100 text-sm transition-all disabled:opacity-50"
+                style={{ background: 'rgba(59,130,246,0.16)', border: '1px solid rgba(96,165,250,0.24)' }}
+              >
+                {menuActionLoading === '/social' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                <span className="hidden sm:inline text-xs">Friends</span>
+              </button>
+
               <button
                 onClick={replayTour}
                 title="Replay the tour"

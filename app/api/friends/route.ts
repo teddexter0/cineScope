@@ -138,26 +138,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, username: me.username || usernameFrom(me.email, me.name || '') })
     }
 
-    // Follow a user, resolved by username / email / display name.
+    // Follow a user. Search results send an exact email so legacy profiles whose
+    // display username was derived from their email can still be followed.
     if (action === 'add') {
-      const { query } = body
-      if (!query) return NextResponse.json({ error: 'missing fields' }, { status: 400 })
+      const { query, targetEmail } = body
+      const lookup = String(targetEmail || query || '').trim()
+      if (!lookup) return NextResponse.json({ error: 'A user is required' }, { status: 400 })
 
-      const q = String(query).toLowerCase().trim()
       const target = await prisma.user.findFirst({
         where: {
           isActive: true,
-          OR: [
-            { username: { equals: q, mode: 'insensitive' } },
-            { email: { equals: q, mode: 'insensitive' } },
-            { name: { equals: String(query).trim(), mode: 'insensitive' } },
-          ],
+          OR: targetEmail
+            ? [{ email: { equals: lookup, mode: 'insensitive' } }]
+            : [
+                { username: { equals: lookup, mode: 'insensitive' } },
+                { email: { equals: lookup, mode: 'insensitive' } },
+                { name: { equals: lookup, mode: 'insensitive' } },
+              ],
         },
         select: { id: true, email: true, name: true, username: true },
       })
 
-      if (!target) return NextResponse.json({ success: false, error: 'User not found' })
-      if (target.id === me.id) return NextResponse.json({ success: false, error: "Can't add yourself" })
+      if (!target) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 })
+      if (target.id === me.id) return NextResponse.json({ success: false, error: "Can't add yourself" }, { status: 400 })
 
       await prisma.follow.upsert({
         where: { followerId_followingId: { followerId: me.id, followingId: target.id } },
@@ -183,44 +186,39 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: 'unknown action' }, { status: 400 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    console.error('[friends POST]', error)
+    return NextResponse.json({ error: 'Could not update friends right now' }, { status: 500 })
   }
 }
 
 // ── GET /api/friends?view=friends|activity|leaderboard|search&q=<query> ──────────
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const view = searchParams.get('view') || 'friends'
+  const me = await getMe()
+  if (!me) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  // Search is the only view usable before adding friends; it still needs a session
-  // to exclude the searcher, but degrades gracefully if there isn't one.
   if (view === 'search') {
-    const me = await getMe()
     const q = (searchParams.get('q') || '').toLowerCase().trim()
     if (q.length < 2) return NextResponse.json({ success: true, results: [] })
 
     // The database is the source of truth — every signed-up user is here regardless
     // of whether they've opened the Social page. Broad case-insensitive `contains`
     // covers exact/prefix/substring; matchScore adds fuzzy/typo ranking below.
-    let candidates: UserProfile[] = []
-    try {
-      const rows = await prisma.user.findMany({
-        where: {
-          isActive: true,
-          OR: [
-            { username: { contains: q, mode: 'insensitive' } },
-            { name: { contains: q, mode: 'insensitive' } },
-            { email: { contains: q, mode: 'insensitive' } },
-          ],
-        },
-        select: { email: true, name: true, username: true },
-        take: 50,
-      })
-      candidates = rows.map(profileFromDbUser)
-    } catch {
-      candidates = []
-    }
+    const rows = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { username: { contains: q, mode: 'insensitive' } },
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: { email: true, name: true, username: true },
+      take: 50,
+    })
+    const candidates = rows.map(profileFromDbUser)
 
     const scored = candidates
       .filter(u => u.email !== me?.email)
@@ -232,9 +230,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, results: scored })
   }
-
-  const me = await getMe()
-  if (!me) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
   // IDs of everyone the current user follows.
   const follows = await prisma.follow.findMany({
@@ -279,4 +274,13 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({ error: 'unknown view' }, { status: 400 })
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    return await handleGet(request)
+  } catch (error) {
+    console.error('[friends GET]', error)
+    return NextResponse.json({ error: 'Could not load social data right now' }, { status: 500 })
+  }
 }
