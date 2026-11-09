@@ -13,13 +13,34 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
     }
 
-    const userRatings = await prisma.rating.findMany({
-      where: { userId },
-      include: { movie: true },
-      orderBy: { updatedAt: 'desc' },
-    })
+    const [userRatings, episodeReviews] = await Promise.all([
+      prisma.rating.findMany({ where: { userId }, include: { movie: true }, orderBy: { updatedAt: 'desc' } }),
+      prisma.episodeReview.findMany({ where: { userId }, include: { movie: true }, orderBy: { updatedAt: 'desc' } }),
+    ])
 
-    return NextResponse.json({ success: true, ratings: userRatings.map(mapRatingItem) })
+    const mappedEpisodes = episodeReviews.map(item => ({
+      id: item.id,
+      movieId: String(item.movie.tmdbId),
+      title: item.movie.title,
+      poster_path: item.movie.posterPath,
+      vote_average: item.movie.voteAverage,
+      release_date: item.movie.releaseDate?.toISOString() ?? null,
+      media_type: 'tv',
+      rating: item.rating,
+      review: item.review,
+      seasonNumber: item.seasonNumber,
+      episodeNumber: item.episodeNumber,
+      isPublic: item.isPublic,
+      spoilers: item.spoilers,
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+    }))
+
+    return NextResponse.json({
+      success: true,
+      ratings: [...userRatings.map(mapRatingItem), ...mappedEpisodes]
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    })
   } catch (error) {
     console.error('Get ratings error:', error)
     return NextResponse.json({ success: false, error: 'Failed to get ratings' }, { status: 500 })
@@ -37,6 +58,31 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const movie = await upsertMediaRecord(body)
+
+    const seasonNumber = Number(body.seasonNumber)
+    const episodeNumber = Number(body.episodeNumber)
+    if (body.media_type === 'tv' && Number.isInteger(seasonNumber) && seasonNumber >= 0 && Number.isInteger(episodeNumber) && episodeNumber > 0) {
+      const episodeReview = await prisma.episodeReview.upsert({
+        where: {
+          userId_movieId_seasonNumber_episodeNumber: { userId, movieId: movie.id, seasonNumber, episodeNumber },
+        },
+        update: {
+          rating: Number(body.rating), review: body.review || null,
+          isPublic: body.isPublic !== false, spoilers: body.spoilers === true,
+        },
+        create: {
+          userId, movieId: movie.id, seasonNumber, episodeNumber,
+          rating: Number(body.rating), review: body.review || null,
+          isPublic: body.isPublic !== false, spoilers: body.spoilers === true,
+        },
+      })
+      return NextResponse.json({
+        success: true,
+        episodeReview: { ...episodeReview, movieId: String(movie.tmdbId), title: movie.title },
+        message: `${movie.title} S${seasonNumber} E${episodeNumber} review saved!`,
+      })
+    }
+
     const ratingItem = await prisma.rating.upsert({
       where: {
         userId_movieId: {

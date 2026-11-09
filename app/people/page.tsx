@@ -207,22 +207,22 @@ export default function FavoritePeoplePage() {
             Search for People
           </h2>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-black/55 w-5 h-5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && searchPeople()}
                 placeholder="Search actors, directors, singers… (e.g. 'Nolan', 'Beyoncé', 'Zendaya')"
-                className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full rounded-2xl border border-black/5 bg-white py-4 pl-12 pr-4 text-base font-medium text-black placeholder-black/45 shadow-xl outline-none focus:ring-4 focus:ring-white/25"
               />
             </div>
             <button
               onClick={searchPeople}
               disabled={isSearching || searchQuery.length < 2}
-              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors min-w-[120px]"
+              className="min-h-12 rounded-xl bg-white px-6 py-3 font-bold text-black transition active:scale-[.98] disabled:bg-white/20 disabled:text-white/40 sm:min-w-[120px]"
             >
               {isSearching ? 'Searching...' : 'Search'}
             </button>

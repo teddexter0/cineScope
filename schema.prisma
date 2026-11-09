@@ -39,6 +39,7 @@ model User {
   watchlists       Watchlist[]
   watchlistItems   WatchlistItem[]
   ratings          Rating[]
+  episodeReviews   EpisodeReview[]
   reviews          Review[]
   interactions     UserInteraction[]
   notifications    Notification[]
@@ -139,6 +140,7 @@ model Movie {
   // Relations
   watchlistItems WatchlistItem[]
   ratings        Rating[]
+  episodeReviews EpisodeReview[]
   reviews        Review[]
   cast           Cast[]
   crew           Crew[]
@@ -308,6 +310,29 @@ model Rating {
   
   @@unique([userId, movieId])
   @@map("ratings")
+}
+
+// Episode-level ratings are separate from title ratings so one person can
+// review every episode of a series without overwriting their overall score.
+model EpisodeReview {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  movieId       String   @map("movie_id")
+  seasonNumber  Int      @map("season_number")
+  episodeNumber Int      @map("episode_number")
+  rating        Float
+  review        String?  @db.Text
+  isPublic      Boolean  @default(true) @map("is_public")
+  spoilers      Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie         Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId, seasonNumber, episodeNumber])
+  @@index([movieId, seasonNumber, episodeNumber, isPublic])
+  @@map("episode_reviews")
 }
 
 model Review {

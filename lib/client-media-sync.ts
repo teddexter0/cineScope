@@ -2,6 +2,9 @@
 
 import { persistentStorage } from '@/lib/persistent-storage'
 
+export const DEMO_EMAIL = 'test@cinescope.com'
+export const DEMO_ONBOARDING_KEY = 'cinescope_demo_onboarding'
+
 type WatchlistPayload = {
   movieId: string | number
   title: string
@@ -15,6 +18,10 @@ type WatchlistPayload = {
 type RatingPayload = WatchlistPayload & {
   rating: number
   review?: string | null
+  seasonNumber?: number
+  episodeNumber?: number
+  isPublic?: boolean
+  spoilers?: boolean
 }
 
 export type UserStatePayload = {
@@ -140,7 +147,7 @@ export async function saveRating(payload: RatingPayload) {
 export async function syncLocalRatings(userEmail: string) {
   const local = persistentStorage.getRatings(userEmail)
   let cloud = await fetchCloudRatings()
-  const cloudIds = new Set(cloud.map((item: any) => String(item.movieId)))
+  const cloudIds = new Set(cloud.filter((item: any) => item.seasonNumber === undefined).map((item: any) => String(item.movieId)))
 
   for (const item of local) {
     if (cloudIds.has(String(item.movieId))) {
@@ -170,18 +177,30 @@ export async function syncLocalRatings(userEmail: string) {
 }
 
 export async function fetchUserState(): Promise<UserStatePayload> {
-  return readJson(await fetch('/api/user-state', { cache: 'no-store' }))
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  return readJson(await fetch('/api/user-state', { cache: 'no-store', headers: { 'x-cinescope-timezone': timeZone } }))
 }
 
 export async function patchUserState(payload: UserStatePatch) {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
   return readJson(await fetch('/api/user-state', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-cinescope-timezone': timeZone },
     body: JSON.stringify(payload),
   }))
 }
 
 export async function syncLocalUserState(userEmail: string): Promise<UserStatePayload> {
+  if (userEmail === DEMO_EMAIL) {
+    const responses = JSON.parse(localStorage.getItem(DEMO_ONBOARDING_KEY) ?? '{}')
+    return {
+      onboarding: { completed: Object.keys(responses).length > 0, responses },
+      favoritePeople: persistentStorage.getFavoritePeople(userEmail),
+      favoriteCategories: persistentStorage.getFavoriteCategories(userEmail),
+      dailyFact: { enabled: false },
+    }
+  }
+
   const cloud = await fetchUserState()
   const localFavoritePeople = persistentStorage.getFavoritePeople(userEmail)
   const localFavoriteCategories = persistentStorage.getFavoriteCategories(userEmail)

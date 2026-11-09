@@ -6,12 +6,13 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Star } from 'lucide-react'
 import RatingModal from './RatingModal'
+import type { ReviewContext } from './RatingModal'
 
 interface Props {
   movie: any
   index: number
   onWatchlist: (movie: any) => void
-  onRate: (movie: any, rating: number, review: string) => void
+  onRate: (movie: any, rating: number, review: string, context?: ReviewContext) => void
   existingRating?: number
 }
 
@@ -117,7 +118,7 @@ export default function MovieCard({ movie, index, onWatchlist, onRate, existingR
 
         {/* ── Meta below poster ── */}
         <div className="mt-2 px-0.5">
-          <h3 className="text-white font-medium text-xs md:text-sm leading-snug line-clamp-2"
+          <h3 className="text-white font-semibold text-sm md:text-sm leading-snug line-clamp-2"
             style={{ letterSpacing: '-0.01em' }}>{title}</h3>
           <div className="flex items-center justify-between mt-0.5">
             <span className="text-white/35 text-xs">{year}</span>
@@ -135,11 +136,19 @@ export default function MovieCard({ movie, index, onWatchlist, onRate, existingR
               You: {existingRating}/10
             </div>
           )}
+          <div className="mt-2 grid grid-cols-2 gap-2 md:hidden">
+            <button onClick={() => setRatingOpen(true)} className="flex min-h-10 items-center justify-center gap-1 rounded-lg bg-white text-sm font-bold text-black">
+              <Star className="h-4 w-4" /> {existingRating ? `${existingRating}/10` : 'Rate'}
+            </button>
+            <button onClick={() => onWatchlist(movie)} className="flex min-h-10 items-center justify-center gap-1 rounded-lg border border-white/18 bg-white/9 text-sm font-semibold text-white">
+              <Plus className="h-4 w-4" /> Save
+            </button>
+          </div>
         </div>
       </motion.div>
 
       <RatingModal movie={movie} isOpen={ratingOpen} onClose={() => setRatingOpen(false)}
-        onSubmit={(r, rev) => { onRate(movie, r, rev); setRatingOpen(false) }}
+        onSubmit={(r, rev, context) => { onRate(movie, r, rev, context); setRatingOpen(false) }}
         existingRating={existingRating} />
     </>
   )

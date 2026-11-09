@@ -176,13 +176,13 @@ export default function DiscoverPage() {
 
         {/* Search bar — always visible */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/55 w-5 h-5" />
           <input
             type="text"
             value={searchQuery}
             onChange={handleSearchChange}
             placeholder={`Search ${section === 'now_airing' ? 'TV shows' : 'movies & shows'}…`}
-            className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-3 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+            className="w-full rounded-2xl border border-black/5 bg-white py-4 pl-12 pr-11 text-base font-medium text-black placeholder-black/45 shadow-xl outline-none focus:ring-4 focus:ring-white/25"
           />
           {isSearching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
@@ -198,7 +198,7 @@ export default function DiscoverPage() {
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 mb-6 overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
               <SlidersHorizontal className="w-4 h-4 text-purple-300" />
-              <span className="text-white/70 text-xs font-semibold uppercase tracking-wider">Filters</span>
+                  <span className="text-white/70 text-sm font-semibold uppercase tracking-wider">Filters</span>
               {(selectedGenre || selectedDecade || sort !== 'popularity.desc' || mediaType !== 'movie') && (
                 <button onClick={() => { setSelectedGenre(null); setSelectedDecade(''); setSort('popularity.desc'); setMediaType('movie') }}
                   className="ml-auto text-xs text-purple-300 hover:text-white">Reset</button>
@@ -242,12 +242,12 @@ export default function DiscoverPage() {
               {openSections.genre && (
                 <div className="px-4 pb-3 flex flex-wrap gap-2">
                   <button onClick={() => setSelectedGenre(null)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${!selectedGenre ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
+                    className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${!selectedGenre ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
                     All
                   </button>
                   {genres.map(g => (
                     <button key={g.id} onClick={() => setSelectedGenre(selectedGenre === g.id ? null : g.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${selectedGenre === g.id ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
+                      className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${selectedGenre === g.id ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
                       {g.name}
                     </button>
                   ))}

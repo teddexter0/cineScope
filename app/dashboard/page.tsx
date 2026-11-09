@@ -17,7 +17,8 @@ import DailyFactPopup from '@/app/components/DailyFactPopup'
 import MovieCard from '@/app/components/MovieCard'
 import OnboardingTour from '@/app/components/OnboardingTour'
 import { persistentStorage } from '@/lib/persistent-storage'
-import { patchUserState, saveRating, saveWatchlistItem, syncLocalRatings, syncLocalUserState, syncLocalWatchlist, type UserStatePayload } from '@/lib/client-media-sync'
+import { DEMO_EMAIL, patchUserState, saveRating, saveWatchlistItem, syncLocalRatings, syncLocalUserState, syncLocalWatchlist, type UserStatePayload } from '@/lib/client-media-sync'
+import type { ReviewContext } from '@/app/components/RatingModal'
 
 const GENRES = [
   { id: '28', name: 'Action', emoji: '' },
@@ -84,6 +85,7 @@ export default function Dashboard() {
 
   const [movies, setMovies] = useState<any[]>([])
   const [pageReady, setPageReady] = useState(false)
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false)
   const [isLoadingRecs, setIsLoadingRecs] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -117,11 +119,13 @@ export default function Dashboard() {
       return
     }
     if (status !== 'authenticated') return
-    const email = session?.user?.email || ''
+    const email = session?.user?.email
+    if (!email) return
+    const isDemo = email === DEMO_EMAIL
 
     void (async () => {
       try {
-        const userState = await syncLocalUserState(email || 'demo@user.com')
+        const userState = await syncLocalUserState(email)
         setOnboardingResponses(userState.onboarding?.responses || {})
         setFavGenres(userState.favoriteCategories || [])
         setDailyFactState(userState.dailyFact || null)
@@ -131,23 +135,33 @@ export default function Dashboard() {
           return
         }
 
-        const syncedRatings = await syncLocalRatings(email || 'demo@user.com')
-        await syncLocalWatchlist(email || 'demo@user.com')
+        let ratings = persistentStorage.getRatings(email)
+        if (!isDemo) {
+          const [ratingsSync, watchlistSync] = await Promise.allSettled([
+            syncLocalRatings(email),
+            syncLocalWatchlist(email),
+          ])
+          if (ratingsSync.status === 'fulfilled') ratings = ratingsSync.value
+          else console.error('Failed to sync ratings:', ratingsSync.reason)
+          if (watchlistSync.status === 'rejected') console.error('Failed to sync watchlist:', watchlistSync.reason)
+        }
         const map: Record<string, number> = {}
-        syncedRatings.forEach((r: any) => {
-          if (r.movieId) map[String(r.movieId)] = r.rating
+        ratings.forEach((r: any) => {
+          if (r.movieId && r.seasonNumber == null) map[String(r.movieId)] = r.rating
         })
         setUserRatings(map)
         setPageReady(true)
         loadRecs(userState.onboarding?.responses || {}, userState.favoriteCategories || [])
       } catch (error) {
-        console.error('Failed to sync ratings:', error)
-        router.push('/onboarding')
+        console.error('Failed to load account profile:', error)
+        setProfileLoadFailed(true)
       }
     })()
 
     setTourReady(true)
     setTourCompleted(!!localStorage.getItem('cinescope_tour_done_v1'))
+
+    if (isDemo) return
 
     fetch('/api/friends', {
       method: 'POST',
@@ -281,7 +295,7 @@ export default function Dashboard() {
     }
   }
 
-  const rateMovie = async (movie: any, rating: number, review: string) => {
+  const rateMovie = async (movie: any, rating: number, review: string, context?: ReviewContext) => {
     const email = session?.user?.email || 'demo@user.com'
     const item = {
       movieId: movie.id,
@@ -292,13 +306,19 @@ export default function Dashboard() {
       rating,
       review,
       media_type: movie.media_type || 'movie',
+      seasonNumber: context?.scope === 'episode' ? context.seasonNumber : undefined,
+      episodeNumber: context?.scope === 'episode' ? context.episodeNumber : undefined,
+      isPublic: context?.isPublic,
+      spoilers: context?.spoilers,
     }
     try {
       await saveRating(item)
-      persistentStorage.addRating(email, item)
-      setUserRatings(prev => ({ ...prev, [String(movie.id)]: rating }))
+      if (context?.scope !== 'episode') {
+        persistentStorage.addRating(email, item)
+        setUserRatings(prev => ({ ...prev, [String(movie.id)]: rating }))
+      }
       setRecStats(prev => ({ ...prev, accuracy: Math.min(99, prev.accuracy + 1) }))
-      toast(`Rated "${item.title}" ${rating}/10`, 'ok')
+      toast(context?.scope === 'episode' ? `Published S${context.seasonNumber} E${context.episodeNumber} review` : `Rated "${item.title}" ${rating}/10`, 'ok')
     } catch {
       toast('Failed to save rating', 'info')
     }
@@ -412,6 +432,17 @@ export default function Dashboard() {
     }
   }
 
+  if (profileLoadFailed) {
+    return (
+      <div className="min-h-screen bg-black px-6 flex flex-col items-center justify-center gap-4 text-white">
+        <p role="alert">CineScope couldn&apos;t load your profile. Try again in a moment.</p>
+        <button onClick={() => window.location.reload()} className="rounded-lg bg-yellow-400 px-4 py-2 font-semibold text-black">
+          Retry
+        </button>
+      </div>
+    )
+  }
+
   if (status === 'loading' || !pageReady) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -444,6 +475,7 @@ export default function Dashboard() {
           factData={{ fact: dailyFactState.fact, isNew: !!dailyFactState.isNew }}
           enabled={tourCompleted && dailyFactState.enabled}
           openNonce={dailyFactOpenNonce}
+          onEnabledChange={() => { void toggleDailyFact() }}
         />
       )}
 
@@ -458,7 +490,7 @@ export default function Dashboard() {
       {tourReady && (
         <button
           onClick={replayTour}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-medium shadow-lg transition-all hover:scale-105"
+          className="fixed bottom-6 right-6 z-40 hidden items-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-medium shadow-lg transition-all hover:scale-105 md:flex"
           style={{ background: 'rgba(10,8,22,0.92)', border: '1px solid rgba(250,204,21,0.3)', backdropFilter: 'blur(12px)' }}
         >
           <HelpCircle className="w-4 h-4 text-yellow-400" />
@@ -599,7 +631,7 @@ export default function Dashboard() {
               <button
                 onClick={replayTour}
                 title="Replay the tour"
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-white/55 hover:text-white text-sm transition-all"
+                className="hidden items-center gap-1.5 px-2.5 py-2 rounded-lg text-white/55 hover:text-white text-sm transition-all md:flex"
                 style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}
               >
                 <HelpCircle className="w-4 h-4" />
@@ -728,7 +760,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <section className="px-4 pt-10 pb-6 md:px-6">
+        <section className="px-4 pt-7 pb-7 md:px-6 md:pt-10">
           <div className="max-w-7xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
@@ -755,7 +787,7 @@ export default function Dashboard() {
               data-tour="search-bar"
             >
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 w-4 h-4" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/60 w-5 h-5" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -763,13 +795,12 @@ export default function Dashboard() {
                     setSearchQuery(e.target.value)
                   }}
                   placeholder="Search movies, series, actors…"
-                  className="w-full rounded-xl pl-11 pr-10 py-3.5 text-white placeholder-white/28 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/45 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.11)', backdropFilter: 'blur(12px)' }}
+                  className="w-full rounded-2xl bg-white pl-12 pr-11 py-4 text-base font-medium text-black placeholder-black/45 shadow-[0_14px_45px_rgba(0,0,0,.38)] outline-none ring-1 ring-black/5 transition focus:ring-4 focus:ring-white/25"
                 />
                 {isSearching ? (
-                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-yellow-400 animate-spin" />
+                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/55 animate-spin" />
                 ) : searchQuery ? (
-                  <button onClick={() => { setSearchQuery(''); setShowSearch(false) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
+                  <button onClick={() => { setSearchQuery(''); setShowSearch(false) }} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/8 p-1 text-black/55 hover:text-black">
                     <X className="w-4 h-4" />
                   </button>
                 ) : null}

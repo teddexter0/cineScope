@@ -9,6 +9,7 @@ import Image from 'next/image'
 import { Star, Calendar, ArrowLeft, Film, Pencil } from 'lucide-react'
 import { persistentStorage } from '@/lib/persistent-storage'
 import RatingModal from '@/app/components/RatingModal'
+import type { ReviewContext } from '@/app/components/RatingModal'
 import { saveRating, syncLocalRatings } from '@/lib/client-media-sync'
 
 export default function RatingsPage() {
@@ -32,13 +33,17 @@ export default function RatingsPage() {
     if (status === 'authenticated') void loadRatings()
   }, [status, router, loadRatings])
 
-  const handleEditSubmit = async (rating: number, review: string) => {
+  const handleEditSubmit = async (rating: number, review: string, context?: ReviewContext) => {
     if (!editTarget) return
     const userEmail = session?.user?.email || 'demo@user.com'
     const updated = {
       ...editTarget,
       rating,
       review,
+      seasonNumber: context?.scope === 'episode' ? context.seasonNumber : undefined,
+      episodeNumber: context?.scope === 'episode' ? context.episodeNumber : undefined,
+      isPublic: context?.isPublic,
+      spoilers: context?.spoilers,
       updatedAt: new Date().toISOString(),
     }
     try {
@@ -124,6 +129,9 @@ export default function RatingsPage() {
                         <span className="text-blue-400 font-normal ml-1 text-xs">Series</span>
                       )}
                     </h3>
+                    {r.seasonNumber !== undefined && (
+                      <p className="mb-1.5 text-sm font-semibold text-cyan-300">Season {r.seasonNumber} · Episode {r.episodeNumber}</p>
+                    )}
 
                     {/* Score */}
                     <div className="flex items-center gap-1.5 mb-1.5">

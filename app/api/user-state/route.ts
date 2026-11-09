@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { resolveDailyFactState, type StoredDailyFactPreferences } from '@/lib/daily-fact-state'
+import { getCurrentFactDate, resolveDailyFactState, type StoredDailyFactPreferences } from '@/lib/daily-fact-state'
 import { prisma } from '@/lib/prisma'
 
 const APP_STATE_KEY = '__cineScopeAppState'
@@ -53,19 +53,21 @@ function mergeResponses(responses: Record<string, any>, appState: AppState) {
   }
 }
 
-async function getStateForUser(userId: string) {
+async function getStateForUser(userId: string, timeZone = 'UTC') {
   const [onboardingData, preferences, user] = await Promise.all([
     prisma.onboardingData.findUnique({ where: { userId } }),
     prisma.userPreferences.findUnique({ where: { userId } }),
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
   ])
 
-  if (!user?.email) {
-    throw new Error('User not found')
-  }
+  if (!user) return null
 
   const parsed = parseAppState(onboardingData?.responses)
-  const resolvedDailyFact = resolveDailyFactState(user.email, parsed.appState.dailyFact)
+  const resolvedDailyFact = resolveDailyFactState(
+    user.email,
+    parsed.appState.dailyFact,
+    getCurrentFactDate(new Date(), timeZone)
+  )
 
   return {
     onboardingData,
@@ -75,7 +77,7 @@ async function getStateForUser(userId: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id
@@ -84,7 +86,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const state = await getStateForUser(userId)
+    const state = await getStateForUser(userId, request.headers.get('x-cinescope-timezone') || 'UTC')
+    if (!state) return NextResponse.json({ error: 'Account session expired' }, { status: 401 })
 
     await prisma.onboardingData.upsert({
       where: { userId },
@@ -140,7 +143,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const state = await getStateForUser(userId)
+    const state = await getStateForUser(userId, request.headers.get('x-cinescope-timezone') || 'UTC')
+    if (!state) return NextResponse.json({ error: 'Account session expired' }, { status: 401 })
 
     const nextResponses = body.onboarding?.responses !== undefined
       ? asRecord(body.onboarding.responses)

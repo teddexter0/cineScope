@@ -49,17 +49,16 @@ export default function SignInPage() {
       // Step 2: attempt credentials sign-in
       const result = await signIn('credentials', { email, password, redirect: false })
 
-      if (result?.ok) {
+      if (result?.ok && !result.error) {
         router.push('/dashboard')
         return
       }
 
-      // Sign-in failed.
-      // If we confirmed the email EXISTS, it must be a wrong password.
-      // If the email check was uncertain (null), still say wrong password
-      // (because we tried and the server rejected the credentials — more
-      // actionable than a generic error).
-      setError('wrong-password')
+      if (result?.error === 'SignInUnavailable') {
+        setError('unavailable')
+      } else {
+        setError(result?.error === 'CredentialsSignin' && emailExists === true ? 'wrong-password' : 'unknown')
+      }
     } catch {
       setError('unknown')
     } finally {
@@ -156,6 +155,9 @@ export default function SignInPage() {
                           {' '}if you&apos;ve forgotten it.
                         </p>
                       </>
+                    )}
+                    {error === 'unavailable' && (
+                      <p className="text-red-200 text-sm">CineScope can&apos;t reach the sign-in service right now. Try again in a moment.</p>
                     )}
                     {error === 'unknown' && (
                       <p className="text-red-200 text-sm">Something went wrong — please try again.</p>

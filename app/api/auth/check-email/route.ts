@@ -2,9 +2,7 @@
 // Returns whether an email is registered — used to give smart signin error messages
 
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const user = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
+      const user = await prisma.user.findFirst({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
         select: { id: true },
       })
       // Explicitly return false when user is not found

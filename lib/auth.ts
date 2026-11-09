@@ -3,10 +3,8 @@
 
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 async function findUserByEmailInsensitive(email: string) {
   const rows = await prisma.$queryRaw<Array<{
@@ -64,7 +62,7 @@ export const authOptions: NextAuthOptions = {
           return null
         } catch (error) {
           console.error('Auth error:', error)
-          return null
+          throw new Error('SignInUnavailable')
         }
       },
     }),

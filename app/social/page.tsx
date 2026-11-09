@@ -13,8 +13,9 @@ type SocialTab = 'friends' | 'leaderboard' | 'feed'
 interface Friend { email: string; name: string; username: string }
 interface ActivityItem {
   id: string; userEmail: string; username: string; name: string
-  action: 'added' | 'watched'; title: string; mediaType: 'movie' | 'tv'
+  action: 'added' | 'watched' | 'reviewed'; title: string; mediaType: 'movie' | 'tv'
   posterPath: string | null; timestamp: string
+  seasonNumber?: number; episodeNumber?: number; rating?: number; review?: string | null; spoilers?: boolean
 }
 interface LeaderboardEntry {
   profile: Friend; count: number; recentTitles: string[]
@@ -100,10 +101,8 @@ export default function SocialPage() {
       })
       const data = await res.json()
       if (!res.ok || !data.success) throw new Error(data.error || 'Could not add friend')
-      const addedFriend = data.friend || friend
-      setFriends(prev => prev.some(f => f.email === addedFriend.email) ? prev : [...prev, addedFriend])
       setSearchResults(prev => prev.filter(r => r.email !== friend.email))
-      showToast(`${addedFriend.name} added!`, 'success')
+      showToast(`Request sent to ${friend.name}`, 'success')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Could not add friend', 'error')
     } finally {
@@ -172,7 +171,7 @@ export default function SocialPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide">
           {[
             { key: 'friends',     icon: <Users className="w-4 h-4" />,    label: `Friends (${friends.length})` },
             { key: 'leaderboard', icon: <Trophy className="w-4 h-4" />,   label: 'Leaderboard' },
@@ -191,12 +190,12 @@ export default function SocialPage() {
             {/* Search box */}
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
               <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-green-400" /> Add a Friend
+                <UserPlus className="w-4 h-4 text-green-400" /> Send a Friend Request
               </h3>
               <p className="text-white/50 text-xs mb-3">Search by username, display name, or email prefix (part before @)</p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/55 w-5 h-5" />
                   <input
                     type="text" value={searchQuery}
                     onChange={e => {
@@ -207,7 +206,7 @@ export default function SocialPage() {
                     }}
                     onKeyDown={e => e.key === 'Enter' && searchUsers()}
                     placeholder="e.g. john.doe, cinefan42…"
-                    className="w-full bg-white/10 border border-white/20 rounded-lg pl-9 pr-4 py-2 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    className="w-full rounded-xl border border-black/5 bg-white py-3.5 pl-12 pr-4 text-base font-medium text-black placeholder-black/45 outline-none focus:ring-4 focus:ring-white/25"
                   />
                 </div>
                 <button onClick={searchUsers} disabled={isSearching || searchQuery.length < 2}
@@ -230,7 +229,7 @@ export default function SocialPage() {
                         <button onClick={() => addFriend(u)}
                           disabled={pendingFriend !== null}
                           className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1">
-                          {pendingFriend === u.email ? 'Adding…' : <><UserPlus className="w-3 h-3" /> Add</>}
+                          {pendingFriend === u.email ? 'Sending…' : <><UserPlus className="w-3 h-3" /> Request</>}
                         </button>
                       )}
                     </div>
@@ -249,7 +248,7 @@ export default function SocialPage() {
             {friends.length === 0 ? (
               <div className="text-center py-12 text-white/50">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>No friends yet. Search above to find people!</p>
+                <p>No friends yet. Send a request above—connections only appear after they accept.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -279,7 +278,7 @@ export default function SocialPage() {
         {/* ── Leaderboard Tab ───────────────────────────────────────── */}
         {tab === 'leaderboard' && (
           <div className="space-y-3">
-            <p className="text-white/50 text-sm mb-2">Ranked by activity in the last 7 days (titles added + watched)</p>
+            <p className="text-white/50 text-sm mb-2">Ranked by activity in the last 7 days (saves, watches, and episode reviews)</p>
             {leaderboard.length === 0 ? (
               <div className="text-center py-12 text-white/50">
                 <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -335,9 +334,15 @@ export default function SocialPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm">
                     <span className="font-semibold text-purple-300">@{item.username}</span>
-                    <span className="text-white/60"> {item.action === 'watched' ? 'watched' : 'added to watchlist'}</span>
+                    <span className="text-white/60"> {item.action === 'watched' ? 'watched' : item.action === 'reviewed' ? 'reviewed an episode of' : 'added to watchlist'}</span>
                   </p>
                   <p className="text-white font-medium text-sm truncate">&quot;{item.title}&quot;</p>
+                  {item.action === 'reviewed' && (
+                    <div className="mt-1.5 rounded-lg bg-black/20 px-3 py-2 text-sm">
+                      <p className="font-semibold text-cyan-300">S{item.seasonNumber} E{item.episodeNumber} · {item.rating}/10 {item.spoilers && <span className="ml-1 text-xs text-amber-300">Spoilers</span>}</p>
+                      {item.review && <p className="mt-1 line-clamp-3 text-white/70">{item.spoilers ? 'Spoiler review — open the title to read.' : `“${item.review}”`}</p>}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className={`text-xs flex items-center gap-0.5 ${item.mediaType === 'tv' ? 'text-pink-400' : 'text-blue-400'}`}>
                       {item.mediaType === 'tv' ? <Tv className="w-3 h-3" /> : <Film className="w-3 h-3" />}

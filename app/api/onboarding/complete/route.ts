@@ -4,24 +4,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
 const APP_STATE_KEY = '__cineScopeAppState'
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.email) {
+    const userId = session?.user?.id
+    if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { responses, completed } = body
+    const { responses, completed } = body ?? {}
+    if (!responses || typeof responses !== 'object' || Array.isArray(responses) || typeof completed !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid onboarding responses' }, { status: 400 })
+    }
+
 
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { id: userId },
+      select: { id: true },
     })
 
     if (!user) {
@@ -40,19 +45,20 @@ export async function POST(request: NextRequest) {
       ? { ...responses, [APP_STATE_KEY]: preservedAppState }
       : responses
 
-    await prisma.onboardingData.upsert({
-      where: { userId: user.id },
-      update: { responses: mergedResponses, completed, updatedAt: new Date() },
-      create: { userId: user.id, responses: mergedResponses, completed },
-    })
-
     const preferences = analyzeResponses(responses)
 
-    await prisma.userPreferences.upsert({
-      where: { userId: user.id },
-      update: preferences,
-      create: { userId: user.id, ...preferences },
-    })
+    await prisma.$transaction([
+      prisma.onboardingData.upsert({
+        where: { userId: user.id },
+        update: { responses: mergedResponses, completed },
+        create: { userId: user.id, responses: mergedResponses, completed },
+      }),
+      prisma.userPreferences.upsert({
+        where: { userId: user.id },
+        update: preferences,
+        create: { userId: user.id, ...preferences },
+      }),
+    ])
 
     return NextResponse.json({ success: true })
   } catch (error) {

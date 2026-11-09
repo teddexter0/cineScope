@@ -2,6 +2,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "./components/SessionProvider";
+import MobileBottomNav from "./components/MobileBottomNav";
+import FriendRequestInbox from "./components/FriendRequestInbox";
 import "./globals.css";
 
 const inter = Inter({
@@ -27,6 +29,8 @@ export default function RootLayout({
         <SessionProvider>
           <div className="min-h-screen">
             {children}
+            <FriendRequestInbox />
+            <MobileBottomNav />
           </div>
         </SessionProvider>
       </body>

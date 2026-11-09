@@ -22,9 +22,10 @@ interface Props {
   } | null
   enabled?: boolean
   openNonce?: number
+  onEnabledChange?: (enabled: boolean) => void
 }
 
-export default function DailyFactPopup({ factData, enabled = true, openNonce = 0 }: Props) {
+export default function DailyFactPopup({ factData, enabled = true, openNonce = 0, onEnabledChange }: Props) {
   const [visible, setVisible] = useState(false)
   const [fact, setFact] = useState<CineFact | null>(null)
 
@@ -92,13 +93,16 @@ export default function DailyFactPopup({ factData, enabled = true, openNonce = 0
             <p className="text-white/80 leading-relaxed text-sm mb-6">{fact.body}</p>
 
             {/* Footer */}
-            <div className="flex items-center justify-between">
-              <p className="text-white/30 text-xs">Your daily CineScope fact · new one tomorrow</p>
+            <div className="flex items-center justify-between gap-3">
+              <button onClick={() => onEnabledChange?.(!enabled)} className="flex items-center gap-2 text-left text-xs text-white/55" aria-pressed={enabled}>
+                <span className={`relative h-5 w-9 rounded-full transition ${enabled ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-4 w-4 rounded-full transition ${enabled ? 'left-[18px] bg-black' : 'left-0.5 bg-white/60'}`} /></span>
+                Daily facts
+              </button>
               <button
                 onClick={() => setVisible(false)}
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-all"
               >
-                Got it ✓
+                Done
               </button>
             </div>
           </motion.div>

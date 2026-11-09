@@ -50,6 +50,88 @@ h1,h2,h3,h4,h5,h6 {
   border: 0 !important;
 }
 
+/* ─── Mobile app chrome ─────────────────────────────────── */
+.mobile-tab-bar {
+  position: fixed;
+  z-index: 55;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 0.5rem 0.45rem calc(0.45rem + env(safe-area-inset-bottom));
+  background: rgba(3, 3, 5, 0.94);
+  border-top: 1px solid rgba(255,255,255,0.13);
+  box-shadow: 0 -14px 40px rgba(0,0,0,0.48);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+.mobile-tab {
+  min-width: 0;
+  min-height: 3.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: rgba(255,255,255,0.48);
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-radius: 0.85rem;
+  transition: color .16s ease, background .16s ease, transform .16s ease;
+}
+.mobile-tab:active { transform: scale(.94); }
+.mobile-tab-icon {
+  width: 2rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  transition: background .16s ease, color .16s ease;
+}
+.mobile-tab-icon svg { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
+.mobile-tab.is-active { color: #fff; }
+.mobile-tab.is-active .mobile-tab-icon {
+  color: #0a0a0a;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(255,255,255,.18);
+}
+
+.friend-request-card,
+.friend-request-pill {
+  position: fixed;
+  z-index: 65;
+  right: 1rem;
+  bottom: 1rem;
+  background: rgba(12,12,14,.96);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 24px 70px rgba(0,0,0,.58);
+  backdrop-filter: blur(20px);
+}
+.friend-request-card {
+  width: min(25rem, calc(100vw - 2rem));
+  display: flex;
+  gap: .85rem;
+  padding: 1rem;
+  border-radius: 1.15rem;
+}
+.friend-request-pill { padding: .75rem 1rem; border-radius: 999px; display: flex; gap: .5rem; align-items: center; color: #fff; font-size: .875rem; font-weight: 600; }
+.friend-request-avatar { width: 2.65rem; height: 2.65rem; flex: 0 0 auto; display: grid; place-items: center; border-radius: 999px; color: #111; font-weight: 800; background: linear-gradient(135deg,#fff,#d4d4d8); }
+.friend-request-dismiss { position: absolute; right: .7rem; top: .65rem; color: rgba(255,255,255,.42); padding: .25rem; }
+.friend-action { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-height: 2.25rem; padding: .4rem .7rem; border-radius: .65rem; font-size: .75rem; font-weight: 700; transition: filter .15s, background .15s; }
+.friend-action:disabled { opacity: .5; }
+.friend-accept { background: #fff; color: #080808; }
+.friend-decline { background: rgba(255,255,255,.1); color: rgba(255,255,255,.78); }
+.friend-view { color: rgba(255,255,255,.55); }
+
+@media (max-width: 767px) {
+  html { font-size: 17px; }
+  .friend-request-card, .friend-request-pill { bottom: calc(5.7rem + env(safe-area-inset-bottom)); }
+  button, input, textarea, select { font-size: max(16px, 1em); }
+}
+
 @media (max-width: 767px) {
   .youtube-background iframe {
     height: 90vh !important;
