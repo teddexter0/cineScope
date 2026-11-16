@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
+import { prisma as profiles } from '@/lib/prisma'
+import { usesFirestore } from '@/lib/firestore-store'
 
 const prisma = new PrismaClient()
 
@@ -22,6 +24,13 @@ interface UserRow {
 
 /** Raw SQL fetch — works whether or not quota columns exist in the DB. */
 async function fetchUser(email: string): Promise<UserRow | null> {
+  if (usesFirestore()) {
+    const user = await profiles.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: { id: true, username: true, usernameChangedAt: true, usernameChangeCount: true },
+    })
+    return user ? { ...user, hasQuotaCols: true } : null
+  }
   // Try with quota columns first
   try {
     const rows = await prisma.$queryRaw<any[]>`
@@ -93,6 +102,21 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Uniqueness check — raw SQL, case-insensitive
+    if (usesFirestore()) {
+      try {
+        const updated = await profiles.user.update({
+          where: { id: user.id, usernameChangeCount: user.usernameChangeCount ?? 0 },
+          data: { username: normalized, usernameChangedAt: new Date(), usernameChangeCount: (user.usernameChangeCount ?? 0) + 1 },
+        })
+        const used = updated.usernameChangeCount
+        return NextResponse.json({ success: true, username: normalized, quota: { used, max: MAX_CHANGES, remaining: Math.max(0, MAX_CHANGES - used), cooldownDays: COOLDOWN_DAYS } })
+      } catch (error: any) {
+        if (error.code === 'P2002') return NextResponse.json({ error: 'Username is already taken' }, { status: 409 })
+        if (error.message === 'Record not found.') return NextResponse.json({ error: 'Username changed. Reload your profile and retry.' }, { status: 409 })
+        throw error
+      }
+    }
+
     const conflict = await prisma.$queryRaw<any[]>`
       SELECT id FROM users
       WHERE LOWER(username) = LOWER(${normalized}) AND id != ${user.id}

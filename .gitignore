@@ -28,3 +28,13 @@ build/
 # Production only
 .env.production
 .env.production.local
+
+# Private CineScope migration files
+*.cinescope-auth.json
+*.cinescope-pg.dump
+*.cinescope-data.sql
+*.cinescope-firestore.json
+.local/
+*.cinescope-service-account.json
+.vercel
+.env*.local

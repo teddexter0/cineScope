@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { verifyResetToken } from '@/lib/reset-token'
+import { usesFirebaseAuth } from '@/lib/firebase-auth'
 
 const prisma = new PrismaClient()
 
@@ -19,6 +20,9 @@ async function findUserIdByEmailInsensitive(email: string): Promise<string | nul
 }
 
 export async function POST(request: NextRequest) {
+  if (usesFirebaseAuth()) {
+    return NextResponse.json({ error: 'This link has expired. Please request a new one.' }, { status: 400 })
+  }
   try {
     const { token, password } = await request.json()
 

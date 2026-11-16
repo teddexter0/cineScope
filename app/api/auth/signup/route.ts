@@ -1,10 +1,10 @@
 // Create/update: app/api/auth/signup/route.ts
 
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
+import { FirebaseAuthError, firebasePasswordSignUp, usesFirebaseAuth } from '@/lib/firebase-auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,19 +13,25 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = String(email || '').toLowerCase().trim()
 
     // Basic validation
-    if (!normalizedEmail || !password || !name) {
+    if (!normalizedEmail || typeof password !== 'string' || !password || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
+    if (username && (typeof username !== 'string' || !/^[a-z0-9_]{3,20}$/i.test(username))) {
+      return NextResponse.json({ error: 'Username must be 3–20 letters, numbers, or underscores.' }, { status: 400 })
+    }
+    const normalizedUsername = username ? username.toLowerCase() : undefined
+
     // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail }
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      select: { id: true },
     })
 
-    if (existingUser) {
+    if (existingUser || normalizedEmail === 'test@cinescope.com') {
       return NextResponse.json(
         { error: 'User already exists with this email' },
         { status: 400 }
@@ -47,14 +53,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
-
-    // Normalise username to lowercase for consistent case-insensitive uniqueness
-    const normalizedUsername = username ? username.toLowerCase() : undefined
+    const firebase = usesFirebaseAuth()
+    const id = firebase ? await firebasePasswordSignUp(normalizedEmail, password) : undefined
+    const hashedPassword = firebase ? null : await bcrypt.hash(password, 12)
 
     // Create user in database
     const user = await prisma.user.create({
       data: {
+        id,
         email: normalizedEmail,
         username: normalizedUsername,
         name,
@@ -74,6 +80,21 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const fields = error.meta?.target
+      const usernameConflict = Array.isArray(fields) && fields.includes('username')
+      return NextResponse.json({
+        error: usernameConflict ? 'Username is already taken.' : 'User already exists with this email',
+      }, { status: 400 })
+    }
+    if (error instanceof FirebaseAuthError) {
+      if (error.code === 'EMAIL_EXISTS') {
+        return NextResponse.json({ error: 'User already exists with this email' }, { status: 400 })
+      }
+      if (error.code === 'INVALID_EMAIL' || error.code === 'WEAK_PASSWORD' || error.code === 'PASSWORD_DOES_NOT_MEET_REQUIREMENTS') {
+        return NextResponse.json({ error: 'Enter a valid email and a stronger password.' }, { status: 400 })
+      }
+    }
     console.error('Signup error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

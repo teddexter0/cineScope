@@ -5,6 +5,7 @@ import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
+import { firebasePasswordSignIn, usesFirebaseAuth } from '@/lib/firebase-auth'
 
 async function findUserByEmailInsensitive(email: string) {
   const rows = await prisma.$queryRaw<Array<{
@@ -40,6 +41,17 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          if (usesFirebaseAuth()) {
+            const id = await firebasePasswordSignIn(normalizedEmail, credentials.password)
+            if (!id) return null
+            const profile = await prisma.user.findUnique({
+              where: { id },
+              select: { id: true, email: true, name: true, username: true, isActive: true },
+            })
+            if (!profile || !profile.isActive || profile.email.toLowerCase().trim() !== normalizedEmail) return null
+            return { id, email: profile.email, name: profile.name, username: profile.username ?? undefined }
+          }
+
           console.log('Attempting login for:', normalizedEmail)
 
           const user = await findUserByEmailInsensitive(normalizedEmail)

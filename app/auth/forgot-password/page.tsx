@@ -3,14 +3,14 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Film, Mail, ArrowLeft, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
+import { Film, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import YouTubeTrailerBackground from '@/app/components/YouTubeTrailerBackground'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<{ message: string; resetLink?: string } | null>(null)
+  const [result, setResult] = useState<{ message: string } | null>(null)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,21 +109,6 @@ export default function ForgotPasswordPage() {
                   <p className="text-white/70 text-sm">{result.message}</p>
                 </div>
 
-                {/* If no email service — show the link directly so the flow still works */}
-                {result.resetLink && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-left space-y-3">
-                    <p className="text-yellow-300 text-xs font-semibold uppercase tracking-wide">
-                      No email service — use this link directly:
-                    </p>
-                    <Link
-                      href={result.resetLink}
-                      className="flex items-center gap-2 text-yellow-200 hover:text-yellow-100 text-sm break-all underline"
-                    >
-                      <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                      Reset my password
-                    </Link>
-                  </div>
-                )}
               </motion.div>
             )}
 
